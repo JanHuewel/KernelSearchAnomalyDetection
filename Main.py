@@ -34,7 +34,6 @@ import numpy as np
 import logging
 from PIC import pic
 from sklearn.cluster import KMeans, DBSCAN, AgglomerativeClustering
-from pyspark.mllib.clustering import PowerIterationClustering
 import random
 
 global_param.p_max_threads = os.cpu_count()
