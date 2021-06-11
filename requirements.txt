@@ -1,0 +1,7 @@
+numpy
+tensorflow
+pandas
+tensorflow_probability
+matplotlib
+ruptures
+scikit-learn
