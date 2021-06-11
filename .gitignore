@@ -1,2 +1,3 @@
 .DS_Store
 .ipynv_checkpoints/**
+__pycache__/**
