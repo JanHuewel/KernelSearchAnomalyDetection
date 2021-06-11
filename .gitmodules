@@ -1,0 +1,6 @@
+[submodule "GaussianProcessModelInference"]
+	path = GaussianProcessModelInference
+	url = git@github.com:Bernsai/GaussianProcessModelInference.git
+[submodule "GaussianProcessFundamentals"]
+	path = GaussianProcessFundamentals
+	url = git@github.com:Bernsai/GaussianProcessFundamentals.git
