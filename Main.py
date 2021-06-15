@@ -20,20 +20,21 @@ global_param.init(tf_parallel=os.cpu_count())
 import gpbasics.Statistics.CovarianceMatrix as cov
 import gpbasics.DataHandling.DatasetHandler as dsh
 import gpbasics.DataHandling.DataInput as di
-import gpminference.Experiments.Experiment as exp
-import gpminference.AutomaticGpmRetrieval as agr
+import gpmretrieval.Experiments.Experiment as exp
+import gpmretrieval.AutomaticGpmRetrieval as agr
 import gpbasics.KernelBasics.BaseKernels as bk
 import gpbasics.MeanFunctionBasics.BaseMeanFunctions as bmf
 import gpbasics.Metrics.Metrics as met
-import gpminference.KernelExpansionStrategies.KernelExpansionStrategy as kexp
+import gpmretrieval.KernelExpansionStrategies.KernelExpansionStrategy as kexp
 import gpbasics.Optimizer.Fitter as f
 import gpbasics.Metrics.MatrixHandlingTypes as mht
-import gpminference.autogpmr_parameters as auto_gpm_param
+import gpmretrieval.autogpmr_parameters as auto_gpm_param
 import tensorflow as tf
 import numpy as np
 import logging
 from PIC import pic
 from sklearn.cluster import KMeans, DBSCAN, AgglomerativeClustering
+from gpbasics.Statistics.GaussianProcess import GaussianProcess
 import random
 
 global_param.p_max_threads = os.cpu_count()
@@ -55,20 +56,21 @@ global_param.p_dtype = tf.float64
 global_param.p_cov_matrix_jitter = tf.constant(1e-8, dtype=global_param.p_dtype)
 
 if __name__ == '__main__':
-    dataset_name = "data/dd_test_basic_anomaly0.csv"
+    dataset_name = "../data/dd_test_basic_anomaly0.csv"
     segment_length = 5
     number_of_clusters = 2
-    method = "KLD" # cov, likelihood, MSE, KLD
-    normalization = False
+    method = "cov" # cov, likelihood, MSE, KLD, sampling
+    normalization = False # False/None, 1, 2
+    number_of_samples = 500
 
     # check length of dataset
     dataset_pandas = pd.read_csv(dataset_name)
     dataset_length = len(dataset_pandas)
 
     algorithms = [
-        # agr.AlgorithmType.CKS,
+         agr.AlgorithmType.CKS,
         # agr.AlgorithmType.ABCD,
-         agr.AlgorithmType.SKC,
+        # agr.AlgorithmType.SKC,
         # agr.AlgorithmType.SKS,  # 3CS
         # agr.AlgorithmType.IKS, # LARGe
         # agr.AlgorithmType.TopDown_HKS # LGI
@@ -84,8 +86,8 @@ if __name__ == '__main__':
     a, b, c, d = dataset.get_splitted_data()
     for i in range(int(dataset_length/segment_length)):
         data_input_format = di.DataInput(a[i*segment_length:(i+1)*segment_length],
-                                         b[i*segment_length:(i+1)*segment_length],
                                          c[i*segment_length:(i+1)*segment_length],
+                                         b[i*segment_length:(i+1)*segment_length],
                                          d[i*segment_length:(i+1)*segment_length])
         datasets.append(data_input_format)
 
@@ -102,6 +104,9 @@ if __name__ == '__main__':
 
         list_of_kernels.append(exps[1]["best_gp"].covariance_matrix.kernel)
         list_of_noises.append(exps[1]["best_gp"].covariance_matrix.kernel.get_noise())
+
+    for i, kernel in enumerate(list_of_kernels):
+        print(f"{i}: {kernel.get_string_representation()}, {[entry.numpy() for entry in kernel.get_last_hyper_parameter()]}, noise: {kernel.noise}")
 
     # build distance matrix
     if method == "cov":
@@ -157,11 +162,11 @@ if __name__ == '__main__':
                           @ datasets[j].data_y_train
                 error_i = sum(tf.math.square(prediction_i - datasets[i].data_y_train))
                 error_j = sum(tf.math.square(prediction_j - datasets[j].data_y_train))
-                results_matrix[i, j] = results_matrix[j, i] = error_i + error_j
+                results_matrix[i, j] = results_matrix[j, i] = - (error_i + error_j)
 
     elif method == "KLD":
         def kld(sigma0: tf.Tensor, sigma1: tf.Tensor):
-            return 0.5 * (tf.linalg.trace(tf.linalg.inv(sigma1) * sigma0) + 0.0 - len(datasets) + tf.math.log(tf.linalg.det(sigma1)/tf.linalg.det(sigma0)))
+            return 0.5 * (tf.linalg.trace(tf.linalg.inv(sigma1) @ sigma0) + 0.0 - segment_length + tf.math.log(tf.linalg.det(sigma1)/tf.linalg.det(sigma0)))
         results_matrix = np.zeros((len(datasets), len(datasets)))
         for i in range(len(datasets)):
             cov_matrix_i = cov.HolisticCovarianceMatrix(list_of_kernels[i])
@@ -171,20 +176,55 @@ if __name__ == '__main__':
                 cov_matrix_j.set_data_input(datasets[j])
                 K1 = cov_matrix_i.get_K(list_of_kernels[i].get_last_hyper_parameter())
                 K2 = cov_matrix_j.get_K(list_of_kernels[j].get_last_hyper_parameter())
-                results_matrix[i, j] = results_matrix[j, i] = - kld(K1, K2) + kld(K2, K1)
+                print(f"{i}, {j} \nK1 : {np.round(K1, 1)} \nK2 : {np.round(K2, 1)}")
+                results_matrix[i, j] = results_matrix[j, i] = - (kld(K1, K2) + kld(K2, K1))
+
+    elif method == "sampling":
+        results_matrix = np.zeros((len(datasets), len(datasets)))
+        for i in range(len(datasets)):
+            cov_matrix_i = cov.HolisticCovarianceMatrix(list_of_kernels[i])
+            for j in range(i + 1):
+                cov_matrix_j = cov.HolisticCovarianceMatrix(list_of_kernels[j])
+                gp_i = GaussianProcess(list_of_kernels[i], bmf.ZeroMeanFunction(1))
+                gp_j = GaussianProcess(list_of_kernels[j], bmf.ZeroMeanFunction(1))
+                data_for_gp = di.DataInput(datasets[i].join(datasets[j]).data_x_train, datasets[i].join(datasets[j]).data_y_train,
+                                           tf.reshape(tf.linspace(-5,5,100), [100,1]), tf.reshape(tf.linspace(0,0,100),[100,1]))
+                data_for_gp.set_mean_function(bmf.ZeroMeanFunction(1))
+                gp_i.set_data_input(data_for_gp)
+                gp_j.set_data_input(data_for_gp)
+                prediction_i = gp_i.get_n_posterior_functions(number_of_samples, list_of_kernels[i].get_last_hyper_parameter(), list_of_noises[i])
+                prediction_j = gp_j.get_n_posterior_functions(number_of_samples, list_of_kernels[j].get_last_hyper_parameter(), list_of_noises[j])
+                results_matrix[i, j] = results_matrix[j, i] = sum(tf.math.reduce_max(abs(prediction_i - prediction_j), axis = 0)) / number_of_samples
+
+                fig, ax = plt.subplots()
+                for plotting_i in range(3):
+                    ax.plot(np.linspace(-5,5,100), prediction_i[:,plotting_i], "red")
+                ax.set_ylim([-5,5])
+                ax.scatter(x = data_for_gp.data_x_train, y = data_for_gp.data_y_train, color = "black", marker="x")
+                plt.title(f"{i}, {j}")
+                plt.show()
 
     # norm results
     # results_matrix -= results_matrix.min()
     # results_matrix /= results_matrix.max()
     # ver 2
     if normalization:
-        print(f"pre normalization results: {np.round(results_matrix, 3)}")
-        results_matrix -= min(0, min([results_matrix[i, i] for i in range(len(datasets))]) - 1)
+        print(f"pre normalization results: \n{np.round(results_matrix, 3)}")
+    if normalization == 1: # shift matrix to be all non-negative. scale diagonal to 1, then set it to 0
+        if method == "KLD" or method == "MSE" or  method == "sampling":
+            results_matrix -= min(0, results_matrix.min())
+        else:
+            results_matrix -= min(0, results_matrix.min())
         for i in range(len(datasets)):
             results_matrix[i, :] /= np.sqrt(results_matrix[i, i])
         for i in range(len(datasets)):
             results_matrix[:, i] /= results_matrix[i, i]
             results_matrix[i, i] = 0
+    elif normalization == 2: # diagonal entries must be positive. scale diagonal to 1
+        for i in range(len(datasets)):
+            results_matrix[i, :] /= np.sqrt(results_matrix[i, i])
+        for i in range(len(datasets)):
+            results_matrix[:, i] /= results_matrix[i, i]
 
     # clustering
     x = pic(results_matrix, 1000, 1e-6)
@@ -193,8 +233,8 @@ if __name__ == '__main__':
     #clustering = AgglomerativeClustering(number_of_clusters, "precomputed", linkage="complete").fit(results_matrix)
 
     # terminal output to check results
-    print(f"results: {np.round(results_matrix, 2)}")
-    print(f"PIC x: {x}")
+    print(f"results: \n{np.round(results_matrix, 2)}")
+    print(f"PIC x: \n{x}")
     for i, kernel in enumerate(list_of_kernels):
         print(f"{i}: {kernel.get_string_representation()}, {[entry.numpy() for entry in kernel.get_last_hyper_parameter()]}, noise: {kernel.noise}")
 
