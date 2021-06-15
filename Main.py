@@ -78,17 +78,15 @@ if __name__ == '__main__':
     options = {"global_max_depth": 1, "local_max_depth": 3}
 
     # prepare data
-    dataset = dsh.GeneralDatasetHandler(dataset_name,
-                                        y_col_name='Y',
-                                        x_col_name="X")
+    data_x = dataset_pandas['X'].to_numpy().reshape((dataset_length, 1))
+    data_y = dataset_pandas['Y'].to_numpy().reshape((dataset_length, 1))
     #dataset = dsh.KDDHandler(2)
     datasets = list()
-    a, b, c, d = dataset.get_splitted_data()
     for i in range(int(dataset_length/segment_length)):
-        data_input_format = di.DataInput(a[i*segment_length:(i+1)*segment_length],
-                                         c[i*segment_length:(i+1)*segment_length],
-                                         b[i*segment_length:(i+1)*segment_length],
-                                         d[i*segment_length:(i+1)*segment_length])
+        data_input_format = di.DataInput(data_x[i*segment_length:(i+1)*segment_length],
+                                         data_y[i*segment_length:(i+1)*segment_length],
+                                         data_x[i*segment_length:(i+1)*segment_length],
+                                         data_y[i*segment_length:(i+1)*segment_length])
         datasets.append(data_input_format)
 
     # perform kernel search on segments
