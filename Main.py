@@ -59,7 +59,7 @@ if __name__ == '__main__':
     dataset_name = "data/dd_test_basic_anomaly2.csv"
     segment_length = 100
     number_of_clusters = 2
-    method = "likelihood" # cov, likelihood, MSE, KLD, sampling
+    method = "KLD" # cov, likelihood, MSE, KLD, sampling
     normalization = False # False/None, 1, 2
     number_of_samples = 500
 
@@ -226,9 +226,9 @@ if __name__ == '__main__':
 
     # clustering
     x = pic(results_matrix, 1000, 1e-6)
-    clustering = KMeans(n_clusters = number_of_clusters).fit(x)
+    #clustering = KMeans(n_clusters = number_of_clusters).fit(x)
     #clustering = DBSCAN(eps=0.00000001).fit(x)
-    #clustering = AgglomerativeClustering(number_of_clusters, "precomputed", linkage="complete").fit(results_matrix)
+    clustering = AgglomerativeClustering(number_of_clusters, "precomputed", linkage="complete").fit(results_matrix)
 
     # terminal output to check results
     print(f"results: \n{np.round(results_matrix, 2)}")
