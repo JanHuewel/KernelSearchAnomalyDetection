@@ -59,8 +59,8 @@ if __name__ == '__main__':
     dataset_name = "data/dd_test_basic_anomaly2.csv"
     segment_length = 100
     number_of_clusters = 2
-    method = "KLD" # cov, likelihood, MSE, KLD, sampling
-    normalization = 1 # False/None, 1, 2
+    method = "sampling" # cov, likelihood, MSE, KLD, sampling
+    normalization = 2 # False/None, 1, 2
     number_of_samples = 500
 
     # check length of dataset
