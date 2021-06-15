@@ -70,7 +70,7 @@ if __name__ == '__main__':
     algorithms = [
          agr.AlgorithmType.CKS,
         # agr.AlgorithmType.ABCD,
-        # agr.AlgorithmType.SKC,
+
         # agr.AlgorithmType.SKS,  # 3CS
         # agr.AlgorithmType.IKS, # LARGe
         # agr.AlgorithmType.TopDown_HKS # LGI
@@ -226,9 +226,9 @@ if __name__ == '__main__':
 
     # clustering
     x = pic(results_matrix, 1000, 1e-6)
-    #clustering = KMeans(n_clusters = number_of_clusters).fit(x)
+    clustering = KMeans(n_clusters = number_of_clusters).fit(x)
     #clustering = DBSCAN(eps=0.00000001).fit(x)
-    clustering = AgglomerativeClustering(number_of_clusters, "precomputed", linkage="complete").fit(results_matrix)
+    #clustering = AgglomerativeClustering(number_of_clusters, "precomputed", linkage="complete").fit(results_matrix)
 
     # terminal output to check results
     print(f"results: \n{np.round(results_matrix, 2)}")
