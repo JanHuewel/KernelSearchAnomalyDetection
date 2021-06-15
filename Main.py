@@ -20,15 +20,15 @@ global_param.init(tf_parallel=os.cpu_count())
 import gpbasics.Statistics.CovarianceMatrix as cov
 import gpbasics.DataHandling.DatasetHandler as dsh
 import gpbasics.DataHandling.DataInput as di
-import gpmretrieval.Experiments.Experiment as exp
-import gpmretrieval.AutomaticGpmRetrieval as agr
+import gpminference.Experiments.Experiment as exp
+import gpminference.AutomaticGpmRetrieval as agr
 import gpbasics.KernelBasics.BaseKernels as bk
 import gpbasics.MeanFunctionBasics.BaseMeanFunctions as bmf
 import gpbasics.Metrics.Metrics as met
-import gpmretrieval.KernelExpansionStrategies.KernelExpansionStrategy as kexp
+import gpminference.KernelExpansionStrategies.KernelExpansionStrategy as kexp
 import gpbasics.Optimizer.Fitter as f
 import gpbasics.Metrics.MatrixHandlingTypes as mht
-import gpmretrieval.autogpmr_parameters as auto_gpm_param
+import gpminference.autogpmr_parameters as auto_gpm_param
 import tensorflow as tf
 import numpy as np
 import logging
