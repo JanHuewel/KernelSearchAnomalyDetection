@@ -56,11 +56,11 @@ global_param.p_dtype = tf.float64
 global_param.p_cov_matrix_jitter = tf.constant(1e-8, dtype=global_param.p_dtype)
 
 if __name__ == '__main__':
-    dataset_name = "data/dd_test_basic_anomaly3.csv"
+    dataset_name = "data/dd_test_basic_anomaly4.csv"
     segment_length = 50
     number_of_clusters = 2
     method = "MSE" # cov, likelihood, MSE, KLD, sampling
-    normalization = 0 # False/None, 1, 2
+    normalization = 2 # False/None, 1, 2
     number_of_samples = 500
 
     """
@@ -232,6 +232,7 @@ if __name__ == '__main__':
             results_matrix[i, :] /= np.sqrt(results_matrix[i, i])
         for i in range(len(datasets)):
             results_matrix[:, i] /= results_matrix[i, i]
+            results_matrix[i,i] = 0
 
     # clustering
     x = pic(results_matrix, 1000, 1e-6)

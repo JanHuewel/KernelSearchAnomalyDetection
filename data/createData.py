@@ -28,12 +28,12 @@ def f(x):
            + (450<=x <=500) * f4(x)
 
 data["X"] = np.linspace(0, 1000, 1000)
-data["sigma"] = 0.02
+data["sigma"] = 0.004
 data["Y"] = np.vectorize(f)(data["X"]) + np.random.normal(0.0, data["sigma"], len(data["X"]))
 
 df = pd.DataFrame(data)
 
-df.to_csv('dd_test_basic_anomaly3.csv')
+df.to_csv('dd_test_basic_anomaly4.csv')
 
 plt.scatter(x = data["X"], y = data["Y"], marker = ".", linewidth = 0.001)
 plt.show()
