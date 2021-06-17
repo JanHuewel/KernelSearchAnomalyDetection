@@ -56,8 +56,8 @@ global_param.p_dtype = tf.float64
 global_param.p_cov_matrix_jitter = tf.constant(1e-8, dtype=global_param.p_dtype)
 
 if __name__ == '__main__':
-    dataset_name = "data/dd_test_basic_anomaly2.csv"
-    segment_length = 100
+    dataset_name = "data/dd_test_basic_anomaly3.csv"
+    segment_length = 50
     number_of_clusters = 2
     method = "MSE" # cov, likelihood, MSE, KLD, sampling
     normalization = 0 # False/None, 1, 2
