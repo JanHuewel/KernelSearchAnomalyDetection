@@ -59,9 +59,18 @@ if __name__ == '__main__':
     dataset_name = "data/dd_test_basic_anomaly2.csv"
     segment_length = 100
     number_of_clusters = 2
-    method = "likelihood" # cov, likelihood, MSE, KLD, sampling
-    normalization = False # False/None, 1, 2
+    method = "MSE" # cov, likelihood, MSE, KLD, sampling
+    normalization = 0 # False/None, 1, 2
     number_of_samples = 500
+
+    """
+    best normalization methods:
+    cov: tbd , results: bad
+    likelihood: 2, result: bad
+    MSE: None / 2, result: PERFECT
+    KLD: tbd
+    sampling: indifferent, result: bad
+    """
 
     # check length of dataset
     dataset_pandas = pd.read_csv(dataset_name)
@@ -140,7 +149,7 @@ if __name__ == '__main__':
                 cov_matrix_j.set_data_input(datasets[j])
                 a = loglike(cov_matrix_i.get_K(list_of_kernels[i].get_last_hyper_parameter()), list_of_noises[i], datasets[j].data_y_train)
                 b = loglike(cov_matrix_j.get_K(list_of_kernels[j].get_last_hyper_parameter()), list_of_noises[j], datasets[i].data_y_train)
-                results_matrix[i, j] = results_matrix[j, i] = (a + b).numpy()
+                results_matrix[i, j] = results_matrix[j, i] = -(a + b).numpy()
 
 
     elif method == "MSE":
@@ -160,7 +169,7 @@ if __name__ == '__main__':
                           @ datasets[j].data_y_train
                 error_i = sum(tf.math.square(prediction_i - datasets[i].data_y_train))
                 error_j = sum(tf.math.square(prediction_j - datasets[j].data_y_train))
-                results_matrix[i, j] = results_matrix[j, i] = - (error_i + error_j)
+                results_matrix[i, j] = results_matrix[j, i] = 1.0 / (error_i + error_j)
 
     elif method == "KLD":
         def kld(sigma0: tf.Tensor, sigma1: tf.Tensor):
@@ -175,7 +184,7 @@ if __name__ == '__main__':
                 K1 = cov_matrix_i.get_K(list_of_kernels[i].get_last_hyper_parameter())
                 K2 = cov_matrix_j.get_K(list_of_kernels[j].get_last_hyper_parameter())
                 print(f"{i}, {j} \nK1 : {np.round(K1, 1)} \nK2 : {np.round(K2, 1)}")
-                results_matrix[i, j] = results_matrix[j, i] = - (kld(K1, K2) + kld(K2, K1))
+                results_matrix[i, j] = results_matrix[j, i] = 1.0 / (kld(K1, K2) + kld(K2, K1) + 1.0)
 
     elif method == "sampling":
         results_matrix = np.zeros((len(datasets), len(datasets)))
@@ -194,13 +203,13 @@ if __name__ == '__main__':
                 prediction_j = gp_j.get_n_posterior_functions(number_of_samples, list_of_kernels[j].get_last_hyper_parameter(), list_of_noises[j])
                 results_matrix[i, j] = results_matrix[j, i] = sum(tf.math.reduce_max(abs(prediction_i - prediction_j), axis = 0)) / number_of_samples
 
-                fig, ax = plt.subplots()
-                for plotting_i in range(3):
-                    ax.plot(np.linspace(-5,5,100), prediction_i[:,plotting_i], "red")
-                ax.set_ylim([-5,5])
-                ax.scatter(x = data_for_gp.data_x_train, y = data_for_gp.data_y_train, color = "black", marker="x")
-                plt.title(f"{i}, {j}")
-                plt.show()
+                #fig, ax = plt.subplots()
+                #for plotting_i in range(3):
+                #    ax.plot(np.linspace(-5,5,100), prediction_i[:,plotting_i], "red")
+                #ax.set_ylim([-5,5])
+                #ax.scatter(x = data_for_gp.data_x_train, y = data_for_gp.data_y_train, color = "black", marker="x")
+                #plt.title(f"{i}, {j}")
+                #plt.show()
 
     # norm results
     # results_matrix -= results_matrix.min()
