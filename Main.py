@@ -379,21 +379,10 @@ def main():
 
 
 
-        # Load config file
-        # Iterate over all combinations of the configs
-        # Store the configurations in a separate file
-        # Remove the line of the configurations that you have already executed
-
-        datasets, list_of_kernels, list_of_noises = kernel_search("data/dd_test_basic_anomaly4.csv", 100)
-        labels = get_clusters(dataset_name="data/dd_test_basic_anomaly4.csv",
-                             datasets=datasets,
-                             list_of_kernels=list_of_kernels,
-                             list_of_noises=list_of_noises,
-                             segment_length=100,
-                             method="cov",
-                             clustering_method="PIC",
-                             normalization=0,
-                             visual_output=True)
+            # Load config file
+            # Iterate over all combinations of the configs
+            # Store the configurations in a separate file
+            # Remove the line of the configurations that you have already executed
 
 if __name__=="__main__":
     main()
