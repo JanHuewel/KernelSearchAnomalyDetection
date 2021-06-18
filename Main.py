@@ -300,12 +300,13 @@ def main(dataset_name, segment_length = 100, method = "cov", clustering_method =
             x_lim_max = dataset_pandas['X'][(i+1)*segment_length-1]
             #print(f"{x_lim_min} - {x_lim_max}")
             ax.axvspan(x_lim_min, x_lim_max, facecolor=color_palet[clustering.labels_[i]], alpha=0.4)
-        plt.show()
+        plt.savefig('clustering.png')
+        #plt.show()
 
     return clustering.labels_
 
 if __name__=="__main__":
     if len(sys.argv) == 6:
-        result = main(sys.argv[1],int(sys.argv[2]),sys.argv[3],int(sys.argv[4]),int(sys.argv[5]))
+        result = main(sys.argv[1],int(sys.argv[2]),sys.argv[3],sys.argv[4],normalization=int(sys.argv[5]), visual_output=True)
     else:
         result = main("data/dd_test_basic_anomaly2.csv", method="sampling", clustering_method="PIC", visual_output=True)

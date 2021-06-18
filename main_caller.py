@@ -1,4 +1,5 @@
 import subprocess
+import shutil
 import numpy as np
 from itertools import product
 list_of_data = ["data/dd_test_basic_anomaly2.csv"]
@@ -35,3 +36,5 @@ for conf in config:
         print(path, end="")
         #popen.kill() #In case we have to kill something (TODO does this work?)
     out_file.close()
+    shutil.move("clustering.png", f"Results/{output_path}.png")
+
