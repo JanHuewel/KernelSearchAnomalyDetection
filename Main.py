@@ -349,7 +349,8 @@ def main():
         for dataset, segment_length in kernel_search_combinations:
             datasets, list_of_kernels, list_of_noises = kernel_search(dataset, int(segment_length))
             for config in configs:
-                labels = get_clusters(dataset_name=dataset,
+                try:
+                    labels = get_clusters(dataset_name=dataset,
                              datasets=datasets,
                              list_of_kernels=list_of_kernels,
                              list_of_noises=list_of_noises,
@@ -358,24 +359,29 @@ def main():
                              clustering_method=config[1],
                              normalization=int(config[2]),
                              visual_output=True)
-            if exists("clustering.png"):
-                shutil.move("clustering.png", f"{output_path}.png")
-            ground_truth_df= pd.read_csv(dataset)
-            ground_truth = ground_truth_df["Anomaly"]
-            ground_truth_labels = []
-            for i in range(len(datasets)):
-                block = list(ground_truth[i*int(segment_length):i+1*int(segment_length)])
-                ground_truth_labels.append(max(set(block), key=block.count))
-            result = ari_score(labels, ground_truth_labels)
+                except:
+                    labels = "ERROR"
+                if exists("clustering.png"):
+                    shutil.move("clustering.png", f"{output_path}.png")
+                ground_truth_df= pd.read_csv(dataset)
+                ground_truth = ground_truth_df["Anomaly"]
+                ground_truth_labels = []
+                for i in range(len(datasets)):
+                    block = list(ground_truth[i*int(segment_length):i+1*int(segment_length)])
+                    ground_truth_labels.append(max(set(block), key=block.count))
+                if not labels == "ERROR":
+                    result = ari_score(labels, ground_truth_labels)
+                else:
+                    result = "ERROR"
 
-            data_split = dataset[0].split("/")
-            if len(data_split) == 1:
-                output_path = "Results/" + dataset + "_" + segment_length + "_" + "_".join(config)
-            else:
-                output_path = "Results/" + str(data_split[-1][:-4]) + "_" + segment_length +  "_" + "_".join(config) + "_result.txt"
-            results_file = open(output_path, "w")
-            results_file.write(result)
-            results_file.close()
+                data_split = dataset[0].split("/")
+                if len(data_split) == 1:
+                    output_path = "Results/" + dataset + "_" + segment_length + "_" + "_".join(config)
+                else:
+                    output_path = "Results/" + str(data_split[-1][:-4]) + "_" + segment_length +  "_" + "_".join(config) + "_result.txt"
+                results_file = open(output_path, "w")
+                results_file.write(result)
+                results_file.close()
 
 
 
