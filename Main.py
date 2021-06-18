@@ -1,5 +1,5 @@
 from itertools import product
-import confiparser
+import configparser
 import multiprocessing
 import os
 import sys
