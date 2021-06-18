@@ -35,7 +35,7 @@ import logging
 from PIC import pic
 from sklearn.cluster import KMeans, DBSCAN, AgglomerativeClustering
 from gpbasics.Statistics.GaussianProcess import GaussianProcess
-import random
+from sklearn.metrics import adjusted_rand_score as ari_score
 
 global_param.p_max_threads = os.cpu_count()
 global_param.p_used_base_kernel = [bk.PeriodicKernel,
@@ -55,8 +55,7 @@ global_param.p_dtype = tf.float64
 
 global_param.p_cov_matrix_jitter = tf.constant(1e-8, dtype=global_param.p_dtype)
 
-def main(dataset_name, segment_length = 100, method = "cov", clustering_method = "PIC", number_of_clusters = 2,
-         normalization = 0, visual_output = False, text_output = True):
+def kernel_search(dataset_name, segment_length = 100):
 
     #dataset_name = "data/dd_test_basic_anomaly2.csv"
     #segment_length = 100
@@ -116,7 +115,13 @@ def main(dataset_name, segment_length = 100, method = "cov", clustering_method =
 
     #for i, kernel in enumerate(list_of_kernels):
     #    print(f"{i}: {kernel.get_string_representation()}, {[entry.numpy() for entry in kernel.get_last_hyper_parameter()]}, noise: {kernel.noise}")
-    #return datasets, list_of_kernels, list_of_noises
+    return datasets, list_of_kernels, list_of_noises
+
+def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segment_length = 100, method = "cov", clustering_method = "PIC", number_of_clusters = 2,
+         normalization = 0, visual_output = False, text_output = True):
+    # check length of dataset
+    dataset_pandas = pd.read_csv(dataset_name)
+    dataset_length = len(dataset_pandas)
     # build distance matrix
     if method == "cov":
         # build matrix out of distances of cov matrices
@@ -305,10 +310,40 @@ def main(dataset_name, segment_length = 100, method = "cov", clustering_method =
 
     return clustering.labels_
 
-if __name__=="__main__":
+def main():
     if len(sys.argv) == 6:
-        result = main(sys.argv[1],int(sys.argv[2]),sys.argv[3],sys.argv[4],normalization=int(sys.argv[5]), visual_output=True)
+        datasets, list_of_kernels, list_of_noises = kernel_search(sys.argv[1],int(sys.argv[2]))
+        labels = get_clusters(dataset_name=sys.argv[1],
+                             datasets=datasets,
+                             list_of_kernels=list_of_kernels,
+                             list_of_noises=list_of_noises,
+                             segment_length=int(sys.argv[2]),
+                             method=sys.argv[3],
+                             clustering_method=sys.argv[4],
+                             normalization=int(sys.argv[5]),
+                             visual_output=False,
+                             text_output=False)
+        ground_truth_df= pd.read_csv(sys.argv[1])
+        ground_truth = ground_truth_df["Anomaly"]
+        ground_truth_labels = []
+        for i in range(len(datasets)):
+            block = list(ground_truth[i*int(sys.argv[2]):i+1*int(sys.argv[2])])
+            ground_truth_labels.append(max(set(block), key=block.count))
+        result = ari_score(labels, ground_truth_labels)
+        results_file = open(sys.argv[1][:4] + "_" + sys.argv[3] + "_" + sys.argv[4] + "_" + sys.argv[5] + "result.txt", "a")
+        results_file.write(result)
+        results_file.close()
     else:
-        result = main("data/dd_test_basic_anomaly4.csv", segment_length=50,
-                      method="sampling", clustering_method="PIC",
-                      visual_output=True)
+        datasets, list_of_kernels, list_of_noises = kernel_search("data/dd_test_basic_anomaly4.csv", 100)
+        labels = get_clusters(dataset_name="data/dd_test_basic_anomaly4.csv",
+                             datasets=datasets,
+                             list_of_kernels=list_of_kernels,
+                             list_of_noises=list_of_noises,
+                             segment_length=100,
+                             method="cov",
+                             clustering_method="PIC",
+                             normalization=0,
+                             visual_output=True)
+
+if __name__=="__main__":
+    main()
