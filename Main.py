@@ -338,16 +338,16 @@ def main():
     else:
         config = configparser.ConfigParser()
         config.read("config.ini")
-        dataset_names = config["dataset_names"].split(',')
-        segment_lengths = config["segment_lengths"].split(',')
-        metrics = config["metrics"].split(',')
-        clustering_methods = config["clustering_methods"].split(',')
-        normalization_methods = config["normalization_methods"].split(',')
+        dataset_names = config["dataset_names"]["dataset_names"].split(',')
+        segment_lengths = config["segment_lengths"]["segment_lengths"].split(',')
+        metrics = config["metrics"]["metrics"].split(',')
+        clustering_methods = config["clustering_methods"]["clustering_methods"].split(',')
+        normalization_methods = config["normalization_methods"]["normalization_methods"].split(',')
 
         configs = product(metrics, clustering_methods, normalization_methods)
-        kernel_search_combinations = product(datasets, segment_lengths)
+        kernel_search_combinations = product(dataset_names, segment_lengths)
         for dataset, segment_length in kernel_search_combinations:
-            datasets, list_of_kernels, list_of_noises = kernel_search(dataset, segment_length)
+            datasets, list_of_kernels, list_of_noises = kernel_search(dataset, int(segment_length))
             for config in configs:
                 labels = get_clusters(dataset_name=dataset,
                              datasets=datasets,
@@ -356,7 +356,7 @@ def main():
                              segment_length=segment_length,
                              method=config[0],
                              clustering_method=config[1],
-                             normalization=config[2],
+                             normalization=int(config[2]),
                              visual_output=True)
             if exists("clustering.png"):
                 shutil.move("clustering.png", f"{output_path}.png")
