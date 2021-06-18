@@ -1,5 +1,6 @@
 import subprocess
 import numpy as np
+from itertools import product
 list_of_data = ["data/dd_test_basic_anomaly2.csv"]
 list_of_segment_lengths = ["100"]
 list_of_methods = ["cov", "likelihood", "MSE", "KLD", "sampling", "sampling2"]
@@ -23,8 +24,9 @@ def execute(cmd):
         raise subprocess.CalledProcessError(return_code, cmd)
 
 # Example
-for conf in config:
-    for path in execute(cmd + conf):
+#for conf in config:
+#    for path in execute(cmd + list(conf)):
+for path in execute(cmd + test_config):
     print(path, end="")
     pass
 
