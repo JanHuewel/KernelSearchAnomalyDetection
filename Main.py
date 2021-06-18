@@ -116,7 +116,7 @@ def main(dataset_name, segment_length = 100, method = "cov", clustering_method =
 
     #for i, kernel in enumerate(list_of_kernels):
     #    print(f"{i}: {kernel.get_string_representation()}, {[entry.numpy() for entry in kernel.get_last_hyper_parameter()]}, noise: {kernel.noise}")
-
+    #return datasets, list_of_kernels, list_of_noises
     # build distance matrix
     if method == "cov":
         # build matrix out of distances of cov matrices
