@@ -55,21 +55,26 @@ global_param.p_dtype = tf.float64
 
 global_param.p_cov_matrix_jitter = tf.constant(1e-8, dtype=global_param.p_dtype)
 
-if __name__ == '__main__':
-    dataset_name = "data/dd_test_basic_anomaly4.csv"
-    segment_length = 50
-    number_of_clusters = 2
-    method = "MSE" # cov, likelihood, MSE, KLD, sampling
-    normalization = 2 # False/None, 1, 2
+def main(dataset_name, segment_length = 100, method = "cov", clustering_method = "PIC", number_of_clusters = 2,
+         normalization = 0, visual_output = False):
+
+    if __name__!="__main__":
+        multiprocessing.set_start_method('spawn')
+    #dataset_name = "data/dd_test_basic_anomaly2.csv"
+    #segment_length = 100
+    #number_of_clusters = 2
+    #method = "cov" # cov, likelihood, MSE, KLD, sampling, sampling2
+    #normalization = 1 # False/None, 1, 2
     number_of_samples = 500
 
     """
     best normalization methods:
-    cov: tbd , results: bad
-    likelihood: 2, result: bad
+    cov: 1? , results: good, not reproducible
+    likelihood: 0, result: PERFECT
     MSE: None / 2, result: PERFECT
     KLD: tbd
     sampling: indifferent, result: bad
+    sampling2: tbd
     """
 
     # check length of dataset
@@ -89,7 +94,6 @@ if __name__ == '__main__':
     # prepare data
     data_x = dataset_pandas['X'].to_numpy().reshape((dataset_length, 1))
     data_y = dataset_pandas['Y'].to_numpy().reshape((dataset_length, 1))
-    #dataset = dsh.KDDHandler(2)
     datasets = list()
     for i in range(int(dataset_length/segment_length)):
         data_input_format = di.DataInput(data_x[i*segment_length:(i+1)*segment_length],
@@ -112,8 +116,8 @@ if __name__ == '__main__':
         list_of_kernels.append(exps[1]["best_gp"].covariance_matrix.kernel)
         list_of_noises.append(exps[1]["best_gp"].covariance_matrix.kernel.get_noise())
 
-    for i, kernel in enumerate(list_of_kernels):
-        print(f"{i}: {kernel.get_string_representation()}, {[entry.numpy() for entry in kernel.get_last_hyper_parameter()]}, noise: {kernel.noise}")
+    #for i, kernel in enumerate(list_of_kernels):
+    #    print(f"{i}: {kernel.get_string_representation()}, {[entry.numpy() for entry in kernel.get_last_hyper_parameter()]}, noise: {kernel.noise}")
 
     # build distance matrix
     if method == "cov":
@@ -128,8 +132,11 @@ if __name__ == '__main__':
                 cov_matrix_j.set_data_input(data_for_cov_matrix)
                 K1 = cov_matrix_i.get_K(list_of_kernels[i].get_last_hyper_parameter())
                 K2 = cov_matrix_j.get_K(list_of_kernels[j].get_last_hyper_parameter())
-                print(f"{i}, {j} \nK1 : {np.round(K1,1)} \nK2 : {np.round(K2,1)}")
-                results_matrix[i,j] = results_matrix[j,i] = tf.norm(K1 - K2, axis=[-1,-2]).numpy() + abs(i-j) * 0.0
+                #print(f"{i}, {j} \nK1 : {np.round(K1,1)} \nK2 : {np.round(K2,1)}")
+                if clustering_method == "PIC":
+                    results_matrix[i,j] = results_matrix[j,i] = 1.0 / (tf.norm(K1 - K2, axis=[-1,-2]).numpy() + abs(i-j) * 0.0 + 1)
+                else:
+                    results_matrix[i,j] = results_matrix[j,i] = tf.norm(K1 - K2, axis=[-1,-2]).numpy() + abs(i-j) * 0.0
 
     elif method == "likelihood":
         # build matrix out of likelihoods
@@ -149,7 +156,10 @@ if __name__ == '__main__':
                 cov_matrix_j.set_data_input(datasets[j])
                 a = loglike(cov_matrix_i.get_K(list_of_kernels[i].get_last_hyper_parameter()), list_of_noises[i], datasets[j].data_y_train)
                 b = loglike(cov_matrix_j.get_K(list_of_kernels[j].get_last_hyper_parameter()), list_of_noises[j], datasets[i].data_y_train)
-                results_matrix[i, j] = results_matrix[j, i] = -(a + b).numpy()
+                if clustering_method == "PIC":
+                    results_matrix[i, j] = results_matrix[j, i] = -(a + b).numpy()
+                else:
+                    results_matrix[i, j] = results_matrix[j, i] = 1.0 / (- (a + b).numpy())
 
 
     elif method == "MSE":
@@ -169,7 +179,10 @@ if __name__ == '__main__':
                           @ datasets[j].data_y_train
                 error_i = sum(tf.math.square(prediction_i - datasets[i].data_y_train))
                 error_j = sum(tf.math.square(prediction_j - datasets[j].data_y_train))
-                results_matrix[i, j] = results_matrix[j, i] = 1.0 / (error_i + error_j)
+                if clustering_method == "PIC":
+                    results_matrix[i, j] = results_matrix[j, i] = 1.0 / (error_i + error_j)
+                else:
+                    results_matrix[i, j] = results_matrix[j, i] = (error_i + error_j)
 
     elif method == "KLD":
         def kld(sigma0: tf.Tensor, sigma1: tf.Tensor):
@@ -183,8 +196,11 @@ if __name__ == '__main__':
                 cov_matrix_j.set_data_input(datasets[j])
                 K1 = cov_matrix_i.get_K(list_of_kernels[i].get_last_hyper_parameter())
                 K2 = cov_matrix_j.get_K(list_of_kernels[j].get_last_hyper_parameter())
-                print(f"{i}, {j} \nK1 : {np.round(K1, 1)} \nK2 : {np.round(K2, 1)}")
-                results_matrix[i, j] = results_matrix[j, i] = 1.0 / (kld(K1, K2) + kld(K2, K1) + 1.0)
+                #print(f"{i}, {j} \nK1 : {np.round(K1, 1)} \nK2 : {np.round(K2, 1)}")
+                if clustering_method == "PIC":
+                    results_matrix[i, j] = results_matrix[j, i] = 1.0 / (kld(K1, K2) + kld(K2, K1) + 1.0)
+                else:
+                    results_matrix[i, j] = results_matrix[j, i] = kld(K1, K2) + kld(K2, K1)
 
     elif method == "sampling":
         results_matrix = np.zeros((len(datasets), len(datasets)))
@@ -201,7 +217,10 @@ if __name__ == '__main__':
                 gp_j.set_data_input(data_for_gp)
                 prediction_i = gp_i.get_n_posterior_functions(number_of_samples, list_of_kernels[i].get_last_hyper_parameter(), list_of_noises[i])
                 prediction_j = gp_j.get_n_posterior_functions(number_of_samples, list_of_kernels[j].get_last_hyper_parameter(), list_of_noises[j])
-                results_matrix[i, j] = results_matrix[j, i] = sum(tf.math.reduce_max(abs(prediction_i - prediction_j), axis = 0)) / number_of_samples
+                if clustering_method == "PIC":
+                    results_matrix[i, j] = results_matrix[j, i] = number_of_samples / sum(tf.math.reduce_max(abs(prediction_i - prediction_j), axis = 0))
+                else:
+                    results_matrix[i, j] = results_matrix[j, i] = sum(tf.math.reduce_max(abs(prediction_i - prediction_j), axis=0)) / number_of_samples
 
                 #fig, ax = plt.subplots()
                 #for plotting_i in range(3):
@@ -211,12 +230,33 @@ if __name__ == '__main__':
                 #plt.title(f"{i}, {j}")
                 #plt.show()
 
+    elif method == "sampling2":
+        results_matrix = np.zeros((len(datasets), len(datasets)))
+        for i in range(len(datasets)):
+            cov_matrix_i = cov.HolisticCovarianceMatrix(list_of_kernels[i])
+            for j in range(i + 1):
+                cov_matrix_j = cov.HolisticCovarianceMatrix(list_of_kernels[j])
+                gp_i = GaussianProcess(list_of_kernels[i], bmf.ZeroMeanFunction(1))
+                gp_j = GaussianProcess(list_of_kernels[j], bmf.ZeroMeanFunction(1))
+                data_for_gp = di.DataInput(datasets[i].join(datasets[j]).data_x_train, datasets[i].join(datasets[j]).data_y_train,
+                                           tf.reshape(tf.linspace(-5,5,100), [100,1]), tf.reshape(tf.linspace(0,0,100),[100,1]))
+                data_for_gp.set_mean_function(bmf.ZeroMeanFunction(1))
+                gp_i.set_data_input(data_for_gp)
+                gp_j.set_data_input(data_for_gp)
+                prediction_i = gp_i.get_n_prior_functions(number_of_samples, list_of_kernels[i].get_last_hyper_parameter(), list_of_noises[i])
+                prediction_j = gp_j.get_n_prior_functions(number_of_samples, list_of_kernels[j].get_last_hyper_parameter(), list_of_noises[j])
+                if clustering_method == "PIC":
+                    results_matrix[i, j] = results_matrix[j, i] = number_of_samples / sum(tf.math.reduce_max(abs(prediction_i - prediction_j), axis=0))
+                else:
+                    results_matrix[i, j] = results_matrix[j, i] = sum(
+                        tf.math.reduce_max(abs(prediction_i - prediction_j), axis=0)) / number_of_samples
+
     # norm results
     # results_matrix -= results_matrix.min()
     # results_matrix /= results_matrix.max()
     # ver 2
-    if normalization:
-        print(f"pre normalization results: \n{np.round(results_matrix, 3)}")
+    #if normalization:
+    #    print(f"pre normalization results: \n{np.round(results_matrix, 3)}")
     if normalization == 1: # shift matrix to be all non-negative. scale diagonal to 1, then set it to 0
         if method == "KLD" or method == "MSE" or  method == "sampling":
             results_matrix -= min(0, results_matrix.min())
@@ -236,25 +276,32 @@ if __name__ == '__main__':
 
     # clustering
     x = pic(results_matrix, 1000, 1e-6)
-    clustering = KMeans(n_clusters = number_of_clusters).fit(x)
-    #clustering = DBSCAN(eps=0.00000001).fit(x)
-    #clustering = AgglomerativeClustering(number_of_clusters, "precomputed", linkage="complete").fit(results_matrix)
+    if clustering_method == "PIC":
+        clustering = KMeans(n_clusters = number_of_clusters).fit(x)
+    else:
+        clustering = AgglomerativeClustering(number_of_clusters, affinity="precomputed", linkage="complete").fit(results_matrix)
 
     # terminal output to check results
-    print(f"results: \n{np.round(results_matrix, 2)}")
-    print(f"PIC x: \n{x}")
-    for i, kernel in enumerate(list_of_kernels):
-        print(f"{i}: {kernel.get_string_representation()}, {[entry.numpy() for entry in kernel.get_last_hyper_parameter()]}, noise: {kernel.noise}")
+    if visual_output:
+        print(f"results: \n{np.round(results_matrix, 2)}")
+        print(f"PIC x: \n{x}")
+        for i, kernel in enumerate(list_of_kernels):
+            print(f"{i}: {kernel.get_string_representation()}, {[entry.numpy() for entry in kernel.get_last_hyper_parameter()]}, noise: {kernel.noise}")
 
     # plot results
-    fig,ax = plt.subplots()
-    ax.scatter(x = dataset_pandas['X'], y = dataset_pandas['Y'], color='blue', alpha=0.2, marker='.')
-    ax.set_xlabel('Data x')
-    ax.set_ylabel('Data y')
-    color_palet = ['red', 'blue', 'green', 'yellow', 'pink', 'brown', 'cyan', 'darkcyan', 'darkviolet', 'royalblue', 'tan', 'lightgreen', 'lime']
-    for i in range(len(datasets)):
-        x_lim_min = dataset_pandas['X'][i*segment_length]
-        x_lim_max = dataset_pandas['X'][(i+1)*segment_length-1]
-        #print(f"{x_lim_min} - {x_lim_max}")
-        ax.axvspan(x_lim_min, x_lim_max, facecolor=color_palet[clustering.labels_[i]], alpha=0.4)
-    plt.show()
+        fig,ax = plt.subplots()
+        ax.scatter(x = dataset_pandas['X'], y = dataset_pandas['Y'], color='blue', alpha=0.2, marker='.')
+        ax.set_xlabel('Data x')
+        ax.set_ylabel('Data y')
+        color_palet = ['red', 'blue', 'green', 'yellow', 'pink', 'brown', 'cyan', 'darkcyan', 'darkviolet', 'royalblue', 'tan', 'lightgreen', 'lime']
+        for i in range(len(datasets)):
+            x_lim_min = dataset_pandas['X'][i*segment_length]
+            x_lim_max = dataset_pandas['X'][(i+1)*segment_length-1]
+            #print(f"{x_lim_min} - {x_lim_max}")
+            ax.axvspan(x_lim_min, x_lim_max, facecolor=color_palet[clustering.labels_[i]], alpha=0.4)
+        plt.show()
+
+    return clustering.labels_
+
+if __name__=="__main__":
+    result = main("data/dd_test_basic_anomaly2.csv", method="sampling", clustering_method="PIC", visual_output=True)
