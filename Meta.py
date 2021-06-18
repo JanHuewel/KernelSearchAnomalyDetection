@@ -6,7 +6,7 @@ import subprocess
 
 list_of_data = ["data/dd_test_basic_anomaly2.csv"]
 list_of_segment_lengths = [100]
-list_of_methods = ["cov"] #"likelihood", "MSE", "KLD", "sampling", "sampling2"]
+list_of_methods = ["MSE"] #"likelihood", "MSE", "KLD", "sampling", "sampling2"]
 list_of_clusterings = ["PIC", "Agg"]
 list_of_normalizations = [0,1,2]
 list_of_ground_truths = [[0,0,0,0,1,0,0,0,0,0]]
