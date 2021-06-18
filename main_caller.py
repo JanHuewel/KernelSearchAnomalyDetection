@@ -1,3 +1,4 @@
+from os.path import exists
 import subprocess
 import shutil
 import numpy as np
@@ -47,5 +48,6 @@ for conf in config:
         print(path, end="")
         #popen.kill() #In case we have to kill something (TODO does this work?)
     out_file.close()
-    shutil.move("clustering.png", f"{output_path}.png")
+    if exists("clustering.png"):
+        shutil.move("clustering.png", f"{output_path}.png")
 
