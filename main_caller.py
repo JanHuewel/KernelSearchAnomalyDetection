@@ -26,9 +26,13 @@ def execute(cmd):
 # Example
 #for conf in config:
 #    for path in execute(cmd + list(conf)):
+
+output_path = "Results/" + "_".join(test_config)
+out_file = open(output_path + "txt", "w")
 for path in execute(cmd + test_config):
+    out_file.write(path)
     print(path, end="")
     pass
 
     #popen.kill() #TODO does this work?
-
+out_file.close()
