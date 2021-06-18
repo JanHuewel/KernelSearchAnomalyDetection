@@ -1,4 +1,5 @@
 from itertools import product
+import shutil
 import configparser
 import multiprocessing
 import os
@@ -361,8 +362,7 @@ def main():
                              visual_output=True)
                 except:
                     labels = "ERROR"
-                if exists("clustering.png"):
-                    shutil.move("clustering.png", f"{output_path}.png")
+
                 ground_truth_df= pd.read_csv(dataset)
                 ground_truth = ground_truth_df["Anomaly"]
                 ground_truth_labels = []
@@ -382,7 +382,8 @@ def main():
                 results_file = open(output_path, "w")
                 results_file.write(result)
                 results_file.close()
-
+                if exists("clustering.png"):
+                    shutil.move("clustering.png", f"{output_path}.png")
 
 
             # Load config file
