@@ -10,10 +10,9 @@ list_of_ground_truths = [["0","0","0","0","1","0","0","0","0","0"]]
 
 config = product(list_of_data, list_of_segment_lengths, list_of_methods, list_of_clusterings, list_of_normalizations)
 
-test_config = ["data/dd_test_basic_anomaly2.csv", "100", "cov", "PIC", "0"]
-cmd = ['python', 'Main.py'] + test_config
-# todo, insert the new cfg file and the folder for the .data file
+#test_config = ["data/dd_test_basic_anomaly2.csv", "100", "cov", "PIC", "0"]
 #popen = subprocess.Popen(, stdout=subprocess.PIPE, universal_newlines=True)
+cmd = ['python', 'Main.py']
 def execute(cmd):
     popen = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True)
     for stdout_line in iter(popen.stdout.readline, ""):
@@ -23,16 +22,16 @@ def execute(cmd):
     if return_code:
         raise subprocess.CalledProcessError(return_code, cmd)
 
-# Example
-#for conf in config:
-#    for path in execute(cmd + list(conf)):
 
-output_path = "Results/" + "_".join(test_config)
-out_file = open(output_path + "txt", "w")
-for path in execute(cmd + test_config):
-    out_file.write(path)
-    print(path, end="")
-    pass
-
-    #popen.kill() #TODO does this work?
-out_file.close()
+for conf in config:
+    data_split = conf[0].split("/")
+    if len(data_split) == 1:
+        output_path = "Results/" + "_".join(conf)
+    else:
+        output_path = "Results/" + str(data_split[-1]) + "_".join(conf[1:])
+    out_file = open(output_path + ".txt", "w")
+    for path in execute(cmd + list(conf)):
+        out_file.write(path)
+        print(path, end="")
+        #popen.kill() #In case we have to kill something (TODO does this work?)
+    out_file.close()
