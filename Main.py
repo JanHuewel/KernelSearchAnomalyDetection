@@ -56,10 +56,8 @@ global_param.p_dtype = tf.float64
 global_param.p_cov_matrix_jitter = tf.constant(1e-8, dtype=global_param.p_dtype)
 
 def main(dataset_name, segment_length = 100, method = "cov", clustering_method = "PIC", number_of_clusters = 2,
-         normalization = 0, visual_output = False):
+         normalization = 0, visual_output = False, text_output = True):
 
-    if __name__!="__main__":
-        multiprocessing.set_start_method('spawn')
     #dataset_name = "data/dd_test_basic_anomaly2.csv"
     #segment_length = 100
     #number_of_clusters = 2
@@ -282,13 +280,16 @@ def main(dataset_name, segment_length = 100, method = "cov", clustering_method =
         clustering = AgglomerativeClustering(number_of_clusters, affinity="precomputed", linkage="complete").fit(results_matrix)
 
     # terminal output to check results
-    if visual_output:
+    if text_output:
         print(f"results: \n{np.round(results_matrix, 2)}")
         print(f"PIC x: \n{x}")
+        print("list of kernels:")
         for i, kernel in enumerate(list_of_kernels):
             print(f"{i}: {kernel.get_string_representation()}, {[entry.numpy() for entry in kernel.get_last_hyper_parameter()]}, noise: {kernel.noise}")
+        print(f"labels: \n{clustering.labels_}")
 
     # plot results
+    if visual_output:
         fig,ax = plt.subplots()
         ax.scatter(x = dataset_pandas['X'], y = dataset_pandas['Y'], color='blue', alpha=0.2, marker='.')
         ax.set_xlabel('Data x')
@@ -304,4 +305,7 @@ def main(dataset_name, segment_length = 100, method = "cov", clustering_method =
     return clustering.labels_
 
 if __name__=="__main__":
-    result = main("data/dd_test_basic_anomaly2.csv", method="sampling", clustering_method="PIC", visual_output=True)
+    if len(sys.agrv) == 6:
+        result = main(sys.argv[1],sys.argv[2],sys.argv[3],sys.argv[4],sys.argv[5])
+    else:
+        result = main("data/dd_test_basic_anomaly2.csv", method="sampling", clustering_method="PIC", visual_output=True)
