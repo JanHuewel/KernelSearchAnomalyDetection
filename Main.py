@@ -1,3 +1,5 @@
+from itertools import product
+import confiparser
 import multiprocessing
 import os
 import sys
@@ -330,10 +332,58 @@ def main():
             block = list(ground_truth[i*int(sys.argv[2]):i+1*int(sys.argv[2])])
             ground_truth_labels.append(max(set(block), key=block.count))
         result = ari_score(labels, ground_truth_labels)
-        results_file = open(sys.argv[1][:4] + "_" + sys.argv[3] + "_" + sys.argv[4] + "_" + sys.argv[5] + "result.txt", "a")
+        results_file = open("Results/" + sys.argv[1][:4] +  "_" + sys.argv[2] + "_" + sys.argv[3] + "_" + sys.argv[4] + "_" + sys.argv[5] + "_result.txt", "a")
         results_file.write(result)
         results_file.close()
     else:
+        config = configparser.ConfigParser()
+        config.read("config.ini")
+        dataset_names = config["dataset_names"].split(',')
+        segment_lengths = config["segment_lengths"].split(',')
+        metrics = config["metrics"].split(',')
+        clustering_methods = config["clustering_methods"].split(',')
+        normalization_methods = config["normalization_methods"].split(',')
+
+        configs = product(metrics, clustering_methods, normalization_methods)
+        kernel_search_combinations = product(datasets, segment_lengths)
+        for dataset, segment_length in kernel_search_combinations:
+            datasets, list_of_kernels, list_of_noises = kernel_search(dataset, segment_length)
+            for config in configs:
+                labels = get_clusters(dataset_name=dataset,
+                             datasets=datasets,
+                             list_of_kernels=list_of_kernels,
+                             list_of_noises=list_of_noises,
+                             segment_length=segment_length,
+                             method=config[0],
+                             clustering_method=config[1],
+                             normalization=config[2],
+                             visual_output=True)
+            if exists("clustering.png"):
+                shutil.move("clustering.png", f"{output_path}.png")
+            ground_truth_df= pd.read_csv(dataset)
+            ground_truth = ground_truth_df["Anomaly"]
+            ground_truth_labels = []
+            for i in range(len(datasets)):
+                block = list(ground_truth[i*int(segment_length):i+1*int(segment_length)])
+                ground_truth_labels.append(max(set(block), key=block.count))
+            result = ari_score(labels, ground_truth_labels)
+
+            data_split = dataset[0].split("/")
+            if len(data_split) == 1:
+                output_path = "Results/" + dataset + "_" + segment_length + "_" + "_".join(config)
+            else:
+                output_path = "Results/" + str(data_split[-1][:-4]) + "_" + segment_length +  "_" + "_".join(config) + "_result.txt"
+            results_file = open(output_path, "w")
+            results_file.write(result)
+            results_file.close()
+
+
+
+        # Load config file
+        # Iterate over all combinations of the configs
+        # Store the configurations in a separate file
+        # Remove the line of the configurations that you have already executed
+
         datasets, list_of_kernels, list_of_noises = kernel_search("data/dd_test_basic_anomaly4.csv", 100)
         labels = get_clusters(dataset_name="data/dd_test_basic_anomaly4.csv",
                              datasets=datasets,
