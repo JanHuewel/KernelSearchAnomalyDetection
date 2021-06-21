@@ -40,6 +40,9 @@ from sklearn.cluster import KMeans, DBSCAN, AgglomerativeClustering
 from gpbasics.Statistics.GaussianProcess import GaussianProcess
 from sklearn.metrics import adjusted_rand_score as ari_score
 
+DEBUG = True
+
+
 global_param.p_max_threads = os.cpu_count()
 global_param.p_used_base_kernel = [bk.PeriodicKernel,
                                    bk.SquaredExponentialKernel,
@@ -203,7 +206,16 @@ def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segmen
                 cov_matrix_j.set_data_input(datasets[j])
                 K1 = cov_matrix_i.get_K(list_of_kernels[i].get_last_hyper_parameter())
                 K2 = cov_matrix_j.get_K(list_of_kernels[j].get_last_hyper_parameter())
-                #print(f"{i}, {j} \nK1 : {np.round(K1, 1)} \nK2 : {np.round(K2, 1)}")
+                #----
+                if DEBUG:
+                    print("covariance matrix")
+                    print(f"{i}, {j} \nK1 : {np.round(K1, 1)} \nK2 : {np.round(K2, 1)}")
+                    print("eigenvalues")
+                    print(f"K1: \n {tf.linalg.eigvals(K1)}\n K2: \n {tf.linalg.eigvals(K2)}")
+                    print("are diagonal entries maximal?")
+                    #[1 if row[i] = max(row) for i, row in enumerate(K1)]
+                    #print(f"{all()}")
+                #----
                 if clustering_method == "PIC":
                     results_matrix[i, j] = results_matrix[j, i] = 1.0 / (kld(K1, K2) + kld(K2, K1) + 1.0)
                 else:
