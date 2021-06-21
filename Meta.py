@@ -6,8 +6,8 @@ import pickle
 import multiprocessing
 
 list_of_data = ["data/dd_test_basic_anomaly2.csv"]
-list_of_segment_lengths = [100]
-list_of_methods = ["cov", "likelihood", "MSE", "KLD", "sampling", "sampling2"]
+list_of_segment_lengths = [50]
+list_of_methods = ["sampling", "sampling2"]
 list_of_clusterings = ["PIC", "Agg"]
 list_of_normalizations = [0,1,2]
 list_of_ground_truths = [[0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0,0]]#[[0,0,0,0,1,0,0,0,0,0]]
@@ -31,7 +31,8 @@ def main():
                                               visual_output=False,
                                               text_output=False)
                         evaluation = ari_score(labels, list_of_ground_truths[i])
-                    except:
+                    except Exception as E:
+                        print(E)
                         evaluation = "ERROR"
                     results_df = results_df.append({#'data': data,
                                        #'segment_length': list_of_segment_lengths[i],
