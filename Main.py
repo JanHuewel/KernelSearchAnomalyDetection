@@ -304,6 +304,7 @@ def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segmen
         ax.set_ylabel('Data y')
         color_palet = ['red', 'blue', 'green', 'yellow', 'pink', 'brown', 'cyan', 'darkcyan', 'darkviolet', 'royalblue', 'tan', 'lightgreen', 'lime']
         for i in range(len(datasets)):
+            pdb.set_trace()
             x_lim_min = dataset_pandas['X'][i*segment_length]
             x_lim_max = dataset_pandas['X'][(i+1)*segment_length-1]
             #print(f"{x_lim_min} - {x_lim_max}")
