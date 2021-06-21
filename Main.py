@@ -65,7 +65,6 @@ def kernel_search(dataset_name, segment_length = 100):
     #number_of_clusters = 2
     #method = "cov" # cov, likelihood, MSE, KLD, sampling, sampling2
     #normalization = 1 # False/None, 1, 2
-    number_of_samples = 500
 
     """
     best normalization methods:
@@ -122,6 +121,8 @@ def kernel_search(dataset_name, segment_length = 100):
 
 def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segment_length = 100, method = "cov", clustering_method = "PIC", number_of_clusters = 2,
          normalization = 0, visual_output = False, text_output = True):
+    # Used for sampling method
+    number_of_samples = 500
     # check length of dataset
     dataset_pandas = pd.read_csv(dataset_name)
     dataset_length = len(dataset_pandas)
@@ -209,6 +210,7 @@ def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segmen
                     results_matrix[i, j] = results_matrix[j, i] = kld(K1, K2) + kld(K2, K1)
 
     elif method == "sampling":
+        pdb.set_trace()
         results_matrix = np.zeros((len(datasets), len(datasets)))
         for i in range(len(datasets)):
             cov_matrix_i = cov.HolisticCovarianceMatrix(list_of_kernels[i])
@@ -304,7 +306,7 @@ def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segmen
         ax.set_ylabel('Data y')
         color_palet = ['red', 'blue', 'green', 'yellow', 'pink', 'brown', 'cyan', 'darkcyan', 'darkviolet', 'royalblue', 'tan', 'lightgreen', 'lime']
         for i in range(len(datasets)):
-            pdb.set_trace()
+            #pdb.set_trace()
             x_lim_min = dataset_pandas['X'][i*segment_length]
             x_lim_max = dataset_pandas['X'][(i+1)*segment_length-1]
             #print(f"{x_lim_min} - {x_lim_max}")
