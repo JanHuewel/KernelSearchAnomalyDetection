@@ -353,18 +353,18 @@ def main():
             datasets, list_of_kernels, list_of_noises = kernel_search(dataset, int(segment_length))
             for config in configs:
                 try:
-                    pdb.set_trace()
-                    labels = get_clusters(dataset_name=dataset,
-                                         datasets=datasets,
-                                         list_of_kernels=list_of_kernels,
-                                         list_of_noises=list_of_noises,
-                                         segment_length=segment_length,
-                                         method=config[0],
-                                         clustering_method=config[1],
-                                         normalization=int(config[2]),
-                                         visual_output=True)
+                   labels = get_clusters(dataset_name=dataset,
+                             datasets=datasets,
+                             list_of_kernels=list_of_kernels,
+                             list_of_noises=list_of_noises,
+                             segment_length=int(segment_length),
+                             method=config[0],
+                             clustering_method=config[1],
+                             normalization=int(config[2]),
+                             visual_output=True)
                 except:
                     labels = "ERROR"
+
                 ground_truth_df= pd.read_csv(dataset)
                 ground_truth = ground_truth_df["Anomaly"]
                 ground_truth_labels = []
@@ -380,9 +380,9 @@ def main():
                 if len(data_split) == 1:
                     output_path = "Results/" + dataset + "_" + segment_length + "_" + "_".join(config)
                 else:
-                    output_path = "Results/" + str(data_split[-1][:-4]) + "_" + segment_length +  "_" + "_".join(config) + "_result.txt"
+                    output_path = "Results/" + str(data_split[-1][:-4]) + "_" + segment_length + "_" + "_".join(config) + "_result.txt"
                 results_file = open(output_path, "w")
-                results_file.write(result)
+                results_file.write(str(result))
                 results_file.close()
                 if os.path.exists("clustering.png"):
                     shutil.move("clustering.png", f"{output_path}.png")
