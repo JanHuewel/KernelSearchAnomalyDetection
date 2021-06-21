@@ -352,15 +352,16 @@ def main():
             datasets, list_of_kernels, list_of_noises = kernel_search(dataset, int(segment_length))
             for config in configs:
                 try:
+                    pdb.set_trace()
                     labels = get_clusters(dataset_name=dataset,
-                             datasets=datasets,
-                             list_of_kernels=list_of_kernels,
-                             list_of_noises=list_of_noises,
-                             segment_length=segment_length,
-                             method=config[0],
-                             clustering_method=config[1],
-                             normalization=int(config[2]),
-                             visual_output=True)
+                                         datasets=datasets,
+                                         list_of_kernels=list_of_kernels,
+                                         list_of_noises=list_of_noises,
+                                         segment_length=segment_length,
+                                         method=config[0],
+                                         clustering_method=config[1],
+                                         normalization=int(config[2]),
+                                         visual_output=True)
                 except:
                     labels = "ERROR"
 
