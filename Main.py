@@ -210,7 +210,6 @@ def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segmen
                     results_matrix[i, j] = results_matrix[j, i] = kld(K1, K2) + kld(K2, K1)
 
     elif method == "sampling":
-        pdb.set_trace()
         results_matrix = np.zeros((len(datasets), len(datasets)))
         for i in range(len(datasets)):
             cov_matrix_i = cov.HolisticCovarianceMatrix(list_of_kernels[i])
