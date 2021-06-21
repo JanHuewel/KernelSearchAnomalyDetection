@@ -364,7 +364,6 @@ def main():
                                          visual_output=True)
                 except:
                     labels = "ERROR"
-
                 ground_truth_df= pd.read_csv(dataset)
                 ground_truth = ground_truth_df["Anomaly"]
                 ground_truth_labels = []
