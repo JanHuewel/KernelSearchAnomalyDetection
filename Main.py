@@ -206,20 +206,24 @@ def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segmen
                 cov_matrix_j.set_data_input(datasets[j])
                 K1 = cov_matrix_i.get_K(list_of_kernels[i].get_last_hyper_parameter())
                 K2 = cov_matrix_j.get_K(list_of_kernels[j].get_last_hyper_parameter())
-                #----
-                if DEBUG:
-                    print("covariance matrix")
-                    print(f"{i}, {j} \nK1 : {np.round(K1, 1)} \nK2 : {np.round(K2, 1)}")
-                    print("eigenvalues")
-                    print(f"K1: \n {tf.linalg.eigvals(K1)}\n K2: \n {tf.linalg.eigvals(K2)}")
-                    print("are diagonal entries maximal?")
-                    print(f"K1: {all([[(K1[i,i] > K1[i,j] or i == j) for j in range(np.shape(K1)[1])] for i in range(np.shape(K1)[0])])}")
-                    print(f"K2: {all([[(K2[i,i] > K2[i,j] or i == j) for j in range(np.shape(K2)[1])] for i in range(np.shape(K2)[0])])}")
-                #----
-                if clustering_method == "PIC":
-                    results_matrix[i, j] = results_matrix[j, i] = 1.0 / (kld(K1, K2) + kld(K2, K1) + 1.0)
-                else:
-                    results_matrix[i, j] = results_matrix[j, i] = kld(K1, K2) + kld(K2, K1)
+                try:
+                    if clustering_method == "PIC":
+                        results_matrix[i, j] = results_matrix[j, i] = 1.0 / (kld(K1, K2) + kld(K2, K1) + 1.0)
+                    else:
+                        results_matrix[i, j] = results_matrix[j, i] = kld(K1, K2) + kld(K2, K1)
+                except:
+                    # ----
+                    if DEBUG:
+                        print("covariance matrix")
+                        print(f"{i}, {j} \nK1 : {np.round(K1, 1)} \nK2 : {np.round(K2, 1)}")
+                        print("eigenvalues")
+                        print(f"K1: \n {tf.linalg.eigvals(K1)}\n K2: \n {tf.linalg.eigvals(K2)}")
+                        print("are diagonal entries maximal?")
+                        print(
+                            f"K1: {all([[(K1[i, i] > K1[i, j] or i == j) for j in range(np.shape(K1)[1])] for i in range(np.shape(K1)[0])])}")
+                        print(
+                            f"K2: {all([[(K2[i, i] > K2[i, j] or i == j) for j in range(np.shape(K2)[1])] for i in range(np.shape(K2)[0])])}")
+                    # ----
 
     elif method == "sampling":
         results_matrix = np.zeros((len(datasets), len(datasets)))
@@ -362,8 +366,8 @@ def main():
         for dataset, segment_length in kernel_search_combinations:
             datasets, list_of_kernels, list_of_noises = kernel_search(dataset, int(segment_length))
             for config in configs:
-                try:
-                   labels = get_clusters(dataset_name=dataset,
+                #try:
+                labels = get_clusters(dataset_name=dataset,
                              datasets=datasets,
                              list_of_kernels=list_of_kernels,
                              list_of_noises=list_of_noises,
@@ -372,8 +376,8 @@ def main():
                              clustering_method=config[1],
                              normalization=int(config[2]),
                              visual_output=True)
-                except:
-                    labels = "ERROR"
+                #except:
+                #    labels = "ERROR"
 
                 ground_truth_df= pd.read_csv(dataset)
                 ground_truth = ground_truth_df["Anomaly"]
