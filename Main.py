@@ -351,8 +351,8 @@ def main():
         for dataset, segment_length in kernel_search_combinations:
             datasets, list_of_kernels, list_of_noises = kernel_search(dataset, int(segment_length))
             for config in configs:
-                try:
-                    labels = get_clusters(dataset_name=dataset,
+                #try:
+                labels = get_clusters(dataset_name=dataset,
                              datasets=datasets,
                              list_of_kernels=list_of_kernels,
                              list_of_noises=list_of_noises,
@@ -361,8 +361,8 @@ def main():
                              clustering_method=config[1],
                              normalization=int(config[2]),
                              visual_output=True)
-                except:
-                    labels = "ERROR"
+                #except:
+                    #labels = "ERROR"
 
                 ground_truth_df= pd.read_csv(dataset)
                 ground_truth = ground_truth_df["Anomaly"]
