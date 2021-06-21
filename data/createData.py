@@ -26,6 +26,8 @@ def f(x):
     return (x <= 400) * f0(x) \
            + (x > 400) * f1(x)
 
+def anomaly(x):
+    return (x<=400) * 0.0 
 data["X"] = np.linspace(0, 1000, 1000)
 data["sigma"] = 0.1
 data["Y"] = np.vectorize(f)(data["X"]) + np.random.normal(0.0, data["sigma"], len(data["X"]))

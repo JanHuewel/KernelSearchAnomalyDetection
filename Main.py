@@ -331,7 +331,8 @@ def main():
         ground_truth_labels = []
         for i in range(len(datasets)):
             block = list(ground_truth[i*int(sys.argv[2]):i+1*int(sys.argv[2])])
-            ground_truth_labels.append(max(set(block), key=block.count))
+            #ground_truth_labels.append(max(set(block), key=block.count))
+            ground_truth_labels.append(max(block))
         result = ari_score(labels, ground_truth_labels)
         results_file = open("Results/" + sys.argv[1][:4] +  "_" + sys.argv[2] + "_" + sys.argv[3] + "_" + sys.argv[4] + "_" + sys.argv[5] + "_result.txt", "a")
         results_file.write(result)
