@@ -368,14 +368,14 @@ def main():
                 ground_truth = ground_truth_df["Anomaly"]
                 ground_truth_labels = []
                 for i in range(len(datasets)):
-                    block = list(ground_truth[i*int(segment_length):i+1*int(segment_length)])
+                    block = list(ground_truth[i*int(segment_length):(i+1)*int(segment_length)])
                     ground_truth_labels.append(max(set(block), key=block.count))
                 if not labels == "ERROR":
                     result = ari_score(labels, ground_truth_labels)
                 else:
                     result = "ERROR"
 
-                data_split = dataset[0].split("/")
+                data_split = dataset.split("/")
                 if len(data_split) == 1:
                     output_path = "Results/" + dataset + "_" + segment_length + "_" + "_".join(config)
                 else:
@@ -383,7 +383,7 @@ def main():
                 results_file = open(output_path, "w")
                 results_file.write(result)
                 results_file.close()
-                if exists("clustering.png"):
+                if os.path.exists("clustering.png"):
                     shutil.move("clustering.png", f"{output_path}.png")
 
 
