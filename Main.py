@@ -329,6 +329,18 @@ def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segmen
             print(f"{i}: {kernel.get_string_representation()}, {[entry.numpy() for entry in kernel.get_last_hyper_parameter()]}, noise: {kernel.noise}")
         print(f"labels: \n{clustering.labels_}")
 
+        debug_outputs = f"results: \n{np.round(results_matrix, 2)}\n"
+        debug_outputs += f"PIC x: \n{x}\n"
+        debug_outputs += "list of kernels:\n"
+        for i, kernel in enumerate(list_of_kernels):
+            debug_outputs += f"{i}: {kernel.get_string_representation()}, {[entry.numpy() for entry in kernel.get_last_hyper_parameter()]}, noise: {kernel.noise}\n"
+        debug_outputs += f"labels: \n{clustering.labels_}\n"
+
+        results_file = open("output.txt", "w")
+        results_file.write(debug_outputs)
+        results_file.close()
+
+
     # plot results
     if visual_output:
         fig,ax = plt.subplots()
