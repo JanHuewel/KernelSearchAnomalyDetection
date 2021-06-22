@@ -53,7 +53,7 @@ global_param.p_used_base_mean_functions = [bmf.ConstantMeanFunction, bmf.LinearM
 global_param.p_default_hierarchical_kernel_expansion = \
     kexp.KernelExpansionStrategyType.BasicHierarchical
 
-global_param.p_gradient_fitter = f.VariationalSgdFitter
+global_param.p_gradient_fitter = f.ADAMFitter #f.VariationalSgdFitter
 
 auto_gpm_param.p_model_selection_with_test_data = True
 
