@@ -53,7 +53,7 @@ global_param.p_used_base_mean_functions = [bmf.ConstantMeanFunction, bmf.LinearM
 global_param.p_default_hierarchical_kernel_expansion = \
     kexp.KernelExpansionStrategyType.BasicHierarchical
 
-global_param.p_gradient_fitter = f.ADAMFitter #f.VariationalSgdFitter
+global_param.p_gradient_fitter = f.VariationalSgdFitter #f.ADAMFitter
 
 auto_gpm_param.p_model_selection_with_test_data = True
 
@@ -98,14 +98,17 @@ def kernel_search(dataset_name, segment_length = 100):
     # prepare data
     data_x = dataset_pandas['X'].to_numpy().reshape((dataset_length, 1))
     data_y = dataset_pandas['Y'].to_numpy().reshape((dataset_length, 1))
-    data_x -= data_x.min()
-    data_x = data_x / data_x.max()
+
     if data_normalization == "Z-scale":
         data_y -= data_y.mean()
         data_y /= data_y.std()
+        data_x = data_x - data_x.mean()
+        data_x = data_x / data_x.std()
     elif data_normalization == "0-1":
         data_y -= data_y.min()
         data_y /= data_y.max()
+        data_x -= data_x.min()
+        data_x = data_x / data_x.max()
     datasets = list()
     for i in range(int(dataset_length/segment_length)):
         data_input_format = di.DataInput(data_x[i*segment_length:(i+1)*segment_length],
@@ -206,6 +209,7 @@ def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segmen
 
     elif method == "KLD":
         def kld(sigma0: tf.Tensor, sigma1: tf.Tensor):
+            # Cholesky Zerlegung und die logarithmen der Determinanten addieren
             return 0.5 * (tf.linalg.trace(tf.linalg.inv(sigma1) @ sigma0) + 0.0 - segment_length + tf.math.log(tf.linalg.det(sigma1)/tf.linalg.det(sigma0)))
         results_matrix = np.zeros((len(datasets), len(datasets)))
         for i in range(len(datasets)):
