@@ -79,6 +79,8 @@ def kernel_search(dataset_name, segment_length = 100):
     sampling2: tbd
     """
 
+    data_normalization = "Z-scale" # Z-scale / 0-1
+
     # check length of dataset
     dataset_pandas = pd.read_csv(dataset_name)
     dataset_length = len(dataset_pandas)
@@ -96,10 +98,14 @@ def kernel_search(dataset_name, segment_length = 100):
     # prepare data
     data_x = dataset_pandas['X'].to_numpy().reshape((dataset_length, 1))
     data_y = dataset_pandas['Y'].to_numpy().reshape((dataset_length, 1))
-    data_x -= min(data_x)
-    data_x = data_x / max(data_x)
-    data_y -= min(data_y)
-    data_y /= max(data_y)
+    data_x -= data_x.min()
+    data_x = data_x / data_x.max()
+    if data_normalization == "Z-scale":
+        data_y -= data_y.mean()
+        data_y /= data_y.std()
+    elif data_normalization == "0-1":
+        data_y -= data_y.min()
+        data_y /= data_y.max()
     datasets = list()
     for i in range(int(dataset_length/segment_length)):
         data_input_format = di.DataInput(data_x[i*segment_length:(i+1)*segment_length],
