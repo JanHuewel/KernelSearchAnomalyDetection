@@ -96,6 +96,10 @@ def kernel_search(dataset_name, segment_length = 100):
     # prepare data
     data_x = dataset_pandas['X'].to_numpy().reshape((dataset_length, 1))
     data_y = dataset_pandas['Y'].to_numpy().reshape((dataset_length, 1))
+    data_x -= min(data_x)
+    data_x = data_x / max(data_x)
+    data_y -= min(data_y)
+    data_y /= max(data_y)
     datasets = list()
     for i in range(int(dataset_length/segment_length)):
         data_input_format = di.DataInput(data_x[i*segment_length:(i+1)*segment_length],
@@ -204,20 +208,20 @@ def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segmen
                 cov_matrix_j = cov.HolisticCovarianceMatrix(list_of_kernels[j])
                 cov_matrix_i.set_data_input(datasets[i])
                 cov_matrix_j.set_data_input(datasets[j])
-                K1 = cov_matrix_i.get_K(list_of_kernels[i].get_last_hyper_parameter())
-                K2 = cov_matrix_j.get_K(list_of_kernels[j].get_last_hyper_parameter())
-                try:
-                    if clustering_method == "PIC":
-                        results_matrix[i, j] = results_matrix[j, i] = 1.0 / (kld(K1, K2) + kld(K2, K1) + 1.0)
-                    else:
-                        results_matrix[i, j] = results_matrix[j, i] = kld(K1, K2) + kld(K2, K1)
-                except:
+                K1 = cov_matrix_i.get_K_noised(list_of_kernels[i].get_last_hyper_parameter(), list_of_noises[i])
+                K2 = cov_matrix_j.get_K_noised(list_of_kernels[j].get_last_hyper_parameter(), list_of_noises[j])
+                if clustering_method == "PIC":
+                    results_matrix[i, j] = results_matrix[j, i] = 1.0 / (kld(K1, K2) + kld(K2, K1) + 1.0)
+                else:
+                    results_matrix[i, j] = results_matrix[j, i] = kld(K1, K2) + kld(K2, K1)
+                if i == 2 and j == 1:
                     # ----
                     if DEBUG:
                         print("covariance matrix")
-                        print(f"{i}, {j} \nK1 : {np.round(K1, 1)} \nK2 : {np.round(K2, 1)}")
+                        print(f"{i}, {j} \nK1 : {np.round(K1, 3)} \nK2 : {np.round(K2, 3)}")
                         print("eigenvalues")
                         print(f"K1: \n {tf.linalg.eigvals(K1)}\n K2: \n {tf.linalg.eigvals(K2)}")
+                        print(f"Determinante: \n K1: {tf.linalg.det(K1)}, K2: {tf.linalg.det(K2)}")
                         print("are diagonal entries maximal?")
                         print(
                             f"K1: {all([[(K1[i, i] > K1[i, j] or i == j) for j in range(np.shape(K1)[1])] for i in range(np.shape(K1)[0])])}")
