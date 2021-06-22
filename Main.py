@@ -79,6 +79,8 @@ def kernel_search(dataset_name, segment_length = 100):
     sampling2: tbd
     """
 
+    data_normalization = "Z-scale" # Z-scale / 0-1
+
     # check length of dataset
     dataset_pandas = pd.read_csv(dataset_name)
     dataset_length = len(dataset_pandas)
@@ -96,6 +98,14 @@ def kernel_search(dataset_name, segment_length = 100):
     # prepare data
     data_x = dataset_pandas['X'].to_numpy().reshape((dataset_length, 1))
     data_y = dataset_pandas['Y'].to_numpy().reshape((dataset_length, 1))
+    data_x -= data_x.min()
+    data_x = data_x / data_x.max()
+    if data_normalization == "Z-scale":
+        data_y -= data_y.mean()
+        data_y /= data_y.std()
+    elif data_normalization == "0-1":
+        data_y -= data_y.min()
+        data_y /= data_y.max()
     datasets = list()
     for i in range(int(dataset_length/segment_length)):
         data_input_format = di.DataInput(data_x[i*segment_length:(i+1)*segment_length],
@@ -204,22 +214,26 @@ def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segmen
                 cov_matrix_j = cov.HolisticCovarianceMatrix(list_of_kernels[j])
                 cov_matrix_i.set_data_input(datasets[i])
                 cov_matrix_j.set_data_input(datasets[j])
-                K1 = cov_matrix_i.get_K(list_of_kernels[i].get_last_hyper_parameter())
-                K2 = cov_matrix_j.get_K(list_of_kernels[j].get_last_hyper_parameter())
-                #----
-                if DEBUG:
-                    print("covariance matrix")
-                    print(f"{i}, {j} \nK1 : {np.round(K1, 1)} \nK2 : {np.round(K2, 1)}")
-                    print("eigenvalues")
-                    print(f"K1: \n {tf.linalg.eigvals(K1)}\n K2: \n {tf.linalg.eigvals(K2)}")
-                    print("are diagonal entries maximal?")
-                    #[1 if row[i] = max(row) for i, row in enumerate(K1)]
-                    #print(f"{all()}")
-                #----
+                K1 = cov_matrix_i.get_K_noised(list_of_kernels[i].get_last_hyper_parameter(), list_of_noises[i])
+                K2 = cov_matrix_j.get_K_noised(list_of_kernels[j].get_last_hyper_parameter(), list_of_noises[j])
                 if clustering_method == "PIC":
                     results_matrix[i, j] = results_matrix[j, i] = 1.0 / (kld(K1, K2) + kld(K2, K1) + 1.0)
                 else:
                     results_matrix[i, j] = results_matrix[j, i] = kld(K1, K2) + kld(K2, K1)
+                if i == 2 and j == 1:
+                    # ----
+                    if DEBUG:
+                        print("covariance matrix")
+                        print(f"{i}, {j} \nK1 : {np.round(K1, 3)} \nK2 : {np.round(K2, 3)}")
+                        print("eigenvalues")
+                        print(f"K1: \n {tf.linalg.eigvals(K1)}\n K2: \n {tf.linalg.eigvals(K2)}")
+                        print(f"Determinante: \n K1: {tf.linalg.det(K1)}, K2: {tf.linalg.det(K2)}")
+                        print("are diagonal entries maximal?")
+                        print(
+                            f"K1: {all([[(K1[i, i] > K1[i, j] or i == j) for j in range(np.shape(K1)[1])] for i in range(np.shape(K1)[0])])}")
+                        print(
+                            f"K2: {all([[(K2[i, i] > K2[i, j] or i == j) for j in range(np.shape(K2)[1])] for i in range(np.shape(K2)[0])])}")
+                    # ----
 
     elif method == "sampling":
         results_matrix = np.zeros((len(datasets), len(datasets)))
@@ -277,10 +291,7 @@ def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segmen
     #if normalization:
     #    print(f"pre normalization results: \n{np.round(results_matrix, 3)}")
     if normalization == 1: # shift matrix to be all non-negative. scale diagonal to 1, then set it to 0
-        if method == "KLD" or method == "MSE" or  method == "sampling":
-            results_matrix -= min(0, results_matrix.min())
-        else:
-            results_matrix -= min(0, results_matrix.min())
+        results_matrix -= min(0, results_matrix.min())
         for i in range(len(datasets)):
             results_matrix[i, :] /= np.sqrt(results_matrix[i, i])
         for i in range(len(datasets)):
@@ -365,8 +376,8 @@ def main():
         for dataset, segment_length in kernel_search_combinations:
             datasets, list_of_kernels, list_of_noises = kernel_search(dataset, int(segment_length))
             for config in configs:
-                try:
-                   labels = get_clusters(dataset_name=dataset,
+                #try:
+                labels = get_clusters(dataset_name=dataset,
                              datasets=datasets,
                              list_of_kernels=list_of_kernels,
                              list_of_noises=list_of_noises,
@@ -375,8 +386,8 @@ def main():
                              clustering_method=config[1],
                              normalization=int(config[2]),
                              visual_output=True)
-                except:
-                    labels = "ERROR"
+                #except:
+                #    labels = "ERROR"
 
                 ground_truth_df= pd.read_csv(dataset)
                 ground_truth = ground_truth_df["Anomaly"]
