@@ -40,7 +40,7 @@ from sklearn.cluster import KMeans, DBSCAN, AgglomerativeClustering
 from gpbasics.Statistics.GaussianProcess import GaussianProcess
 from sklearn.metrics import adjusted_rand_score as ari_score
 
-DEBUG = True
+DEBUG = False
 
 
 global_param.p_max_threads = os.cpu_count()
@@ -210,7 +210,11 @@ def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segmen
     elif method == "KLD":
         def kld(sigma0: tf.Tensor, sigma1: tf.Tensor):
             # Cholesky Zerlegung und die logarithmen der Determinanten addieren
-            return 0.5 * (tf.linalg.trace(tf.linalg.inv(sigma1) @ sigma0) + 0.0 - segment_length + tf.math.log(tf.linalg.det(sigma1)/tf.linalg.det(sigma0)))
+            L0 = tf.linalg.cholesky(sigma0)
+            L1 = tf.linalg.cholesky(sigma1)
+            return 0.5 * (tf.linalg.trace(tf.linalg.inv(sigma1) @ sigma0) + 0.0 - segment_length \
+                          + sum([tf.math.log(L1[i,i]) for i in range(tf.shape(L1)[0])])\
+                          - sum([tf.math.log(L0[i,i]) for i in range(tf.shape(L1)[0])])) #tf.math.log(tf.linalg.det(sigma1)/tf.linalg.det(sigma0)))
         results_matrix = np.zeros((len(datasets), len(datasets)))
         for i in range(len(datasets)):
             cov_matrix_i = cov.HolisticCovarianceMatrix(list_of_kernels[i])
@@ -237,6 +241,7 @@ def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segmen
                             f"K1: {all([[(K1[i, i] > K1[i, j] or i == j) for j in range(np.shape(K1)[1])] for i in range(np.shape(K1)[0])])}")
                         print(
                             f"K2: {all([[(K2[i, i] > K2[i, j] or i == j) for j in range(np.shape(K2)[1])] for i in range(np.shape(K2)[0])])}")
+                        print(f"term: {tf.linalg.trace(tf.linalg.inv(K1) @ K2)}")
                     # ----
 
     elif method == "sampling":
@@ -292,8 +297,8 @@ def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segmen
     # results_matrix -= results_matrix.min()
     # results_matrix /= results_matrix.max()
     # ver 2
-    #if normalization:
-    #    print(f"pre normalization results: \n{np.round(results_matrix, 3)}")
+    if normalization and text_output:
+        print(f"pre normalization results: \n{np.round(results_matrix, 3)}")
     if normalization == 1: # shift matrix to be all non-negative. scale diagonal to 1, then set it to 0
         results_matrix -= min(0, results_matrix.min())
         for i in range(len(datasets)):
@@ -380,8 +385,8 @@ def main():
         for dataset, segment_length in kernel_search_combinations:
             datasets, list_of_kernels, list_of_noises = kernel_search(dataset, int(segment_length))
             for config in configs:
-                #try:
-                labels = get_clusters(dataset_name=dataset,
+                try:
+                    labels = get_clusters(dataset_name=dataset,
                              datasets=datasets,
                              list_of_kernels=list_of_kernels,
                              list_of_noises=list_of_noises,
@@ -390,8 +395,8 @@ def main():
                              clustering_method=config[1],
                              normalization=int(config[2]),
                              visual_output=True)
-                #except:
-                #    labels = "ERROR"
+                except:
+                    labels = "ERROR"
 
                 ground_truth_df= pd.read_csv(dataset)
                 ground_truth = ground_truth_df["Anomaly"]
