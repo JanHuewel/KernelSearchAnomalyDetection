@@ -314,8 +314,8 @@ def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segmen
             results_matrix[i,i] = 0
 
     # clustering
-    x = pic(results_matrix, 1000, 1e-6)
     if clustering_method == "PIC":
+        x = pic(results_matrix, 1000, 1e-6)
         clustering = KMeans(n_clusters = number_of_clusters).fit(x)
     else:
         clustering = AgglomerativeClustering(number_of_clusters, affinity="precomputed", linkage="complete").fit(results_matrix)
@@ -414,11 +414,13 @@ def main():
                     output_path = "Results/" + dataset + "_" + segment_length + "_" + "_".join(config)
                 else:
                     output_path = "Results/" + str(data_split[-1][:-4]) + "_" + segment_length + "_" + "_".join(config) + "_result.txt"
-                results_file = open(output_path, "w")
-                results_file.write(str(result))
-                results_file.close()
                 if os.path.exists("clustering.png"):
-                    shutil.move("clustering.png", f"{output_path}.png")
+                    shutil.move("clustering.png", f"{output_path[:-4]}.png")
+                if os.path.exists("output.txt"):
+                    shutil.move("output.txt", f"{output_path}")
+                results_file = open(output_path, "a")
+                results_file.write(f"RESULT: {str(result)}")
+                results_file.close()
 
 
             # Load config file
