@@ -168,7 +168,6 @@ def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segmen
             #return -0.5 * tf.transpose(data) @ tf.linalg.inv(K2) @ data - 0.5 * tf.math.log(tf.linalg.det(K2)) - len(data)/2 * tf.cast(tf.math.log(2 * np.pi), tf.float64)
             L = tf.linalg.cholesky(K2)
             alpha = tf.linalg.cholesky_solve(L, data)
-
             return -0.5 * tf.transpose(data) @ alpha -tf.math.log(tf.math.reduce_prod(tf.linalg.tensor_diag_part(L)))  - 0.5 * len(data) * tf.cast(tf.math.log(2 * np.pi), tf.float64)
 
         results_matrix = np.zeros((len(datasets), len(datasets)))
@@ -213,6 +212,8 @@ def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segmen
             # Cholesky Zerlegung und die logarithmen der Determinanten addieren
             L0 = tf.linalg.cholesky(sigma0)
             L1 = tf.linalg.cholesky(sigma1)
+            # TODO can we replace the sums here with tf.math.log(tf.math.reduce_prod(tf.linalg.tensor_diag_part(L)))?
+            # Is it still numerically stable?
             return 0.5 * (tf.linalg.trace(tf.linalg.inv(sigma1) @ sigma0) + 0.0 - segment_length \
                           + sum([tf.math.log(L1[i,i]) for i in range(tf.shape(L1)[0])])\
                           - sum([tf.math.log(L0[i,i]) for i in range(tf.shape(L1)[0])])) #tf.math.log(tf.linalg.det(sigma1)/tf.linalg.det(sigma0)))
