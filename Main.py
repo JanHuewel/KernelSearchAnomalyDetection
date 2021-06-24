@@ -361,6 +361,47 @@ def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segmen
 
     return clustering.labels_
 
+def run_cluster_search_and_store(params):
+    dataset, segment_length, datasets, list_of_kernels, list_of_noises, config = params
+    try:
+       labels = get_clusters(dataset_name=dataset,
+                 datasets=datasets,
+                 list_of_kernels=list_of_kernels,
+                 list_of_noises=list_of_noises,
+                 segment_length=int(segment_length),
+                 method=config[0],
+                 clustering_method=config[1],
+                 normalization=int(config[2]),
+                 visual_output=True)
+    except:
+        labels = "ERROR"
+
+    ground_truth_df= pd.read_csv(dataset)
+    ground_truth = ground_truth_df["Anomaly"]
+    ground_truth_labels = []
+    for i in range(len(datasets)):
+        block = list(ground_truth[i*int(segment_length):(i+1)*int(segment_length)])
+        ground_truth_labels.append(max(set(block), key=block.count))
+    if not labels == "ERROR":
+        result = ari_score(labels, ground_truth_labels)
+    else:
+        result = "ERROR"
+
+    data_split = dataset.split("/")
+    if len(data_split) == 1:
+        output_path = "Results/" + dataset + "_" + segment_length + "_" + "_".join(config)
+    else:
+        output_path = "Results/" + str(data_split[-1][:-4]) + "_" + segment_length + "_" + "_".join(config) + "_result.txt"
+    if os.path.exists("clustering.png"):
+        shutil.move("clustering.png", f"{output_path[:-4]}.png")
+    if os.path.exists("output.txt"):
+        shutil.move("output.txt", f"{output_path}")
+    results_file = open(output_path, "a")
+    results_file.write(f"RESULT: {str(result)}")
+    results_file.close()
+
+
+
 def main():
     if len(sys.argv) == 6:
         datasets, list_of_kernels, list_of_noises = kernel_search(sys.argv[1],int(sys.argv[2]))
@@ -396,46 +437,19 @@ def main():
 
         configs = product(metrics, clustering_methods, normalization_methods)
         kernel_search_combinations = product(dataset_names, segment_lengths)
+        from multiprocessing import Pool
+
         for dataset, segment_length in kernel_search_combinations:
             datasets, list_of_kernels, list_of_noises = kernel_search(dataset, int(segment_length))
-            for config in configs:
-                try:
-                    labels = get_clusters(dataset_name=dataset,
-                             datasets=datasets,
-                             list_of_kernels=list_of_kernels,
-                             list_of_noises=list_of_noises,
-                             segment_length=int(segment_length),
-                             method=config[0],
-                             clustering_method=config[1],
-                             normalization=int(config[2]),
-                             visual_output=True)
-                except:
-                    labels = "ERROR"
-
-                ground_truth_df= pd.read_csv(dataset)
-                ground_truth = ground_truth_df["Anomaly"]
-                ground_truth_labels = []
-                for i in range(len(datasets)):
-                    block = list(ground_truth[i*int(segment_length):(i+1)*int(segment_length)])
-                    ground_truth_labels.append(max(set(block), key=block.count))
-                if not labels == "ERROR":
-                    result = ari_score(labels, ground_truth_labels)
-                else:
-                    result = "ERROR"
-
-                data_split = dataset.split("/")
-                if len(data_split) == 1:
-                    output_path = "Results/" + dataset + "_" + segment_length + "_" + "_".join(config)
-                else:
-                    output_path = "Results/" + str(data_split[-1][:-4]) + "_" + segment_length + "_" + "_".join(config) + "_result.txt"
-                if os.path.exists("clustering.png"):
-                    shutil.move("clustering.png", f"{output_path[:-4]}.png")
-                if os.path.exists("output.txt"):
-                    shutil.move("output.txt", f"{output_path}")
-                results_file = open(output_path, "a")
-                results_file.write(f"RESULT: {str(result)}")
-                results_file.close()
-
+            total_combinations = [[dataset, segment_length, datasets, list_of_kernels, list_of_noises, config] for config in configs]
+            with Pool(len(total_combinations)) as p:
+                p.map(run_cluster_search_and_store, total_combinations)
+        #    for config in configs:
+        #        from multiprocessing import Pool
+        #        with Pool(5) as p:
+        #            p.map(run_cluster_search_and_store)
+        #            print(p.map(f, [1, 2, 3]))
+        #            run_cluster_search_and_store(config, dataset, segment_length)
 
             # Load config file
             # Iterate over all combinations of the configs
