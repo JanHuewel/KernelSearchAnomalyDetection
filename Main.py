@@ -295,12 +295,15 @@ def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segmen
                     results_matrix[i, j] = results_matrix[j, i] = sum(
                         tf.math.reduce_max(abs(prediction_i - prediction_j), axis=0)) / number_of_samples
 
+    np.set_printoptions(threshold=np.inf)
+    debug_outputs = None
     # norm results
     # results_matrix -= results_matrix.min()
     # results_matrix /= results_matrix.max()
     # ver 2
     if normalization and text_output:
-        print(f"pre normalization results: \n{np.round(results_matrix, 3)}")
+        #print(f"pre normalization results: \n{np.round(results_matrix, 3)}")
+        debug_outputs = f"pre normalization results: \n{np.round(results_matrix, 3)}"
     if normalization == 1: # shift matrix to be all non-negative. scale diagonal to 1, then set it to 0
         results_matrix -= min(0, results_matrix.min())
         for i in range(len(datasets)):
@@ -324,14 +327,16 @@ def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segmen
 
     # terminal output to check results
     if text_output:
-        print(f"results: \n{np.round(results_matrix, 2)}")
-        print(f"PIC x: \n{x}")
-        print("list of kernels:")
-        for i, kernel in enumerate(list_of_kernels):
-            print(f"{i}: {kernel.get_string_representation()}, {[entry.numpy() for entry in kernel.get_last_hyper_parameter()]}, noise: {kernel.noise}")
-        print(f"labels: \n{clustering.labels_}")
-
-        debug_outputs = f"results: \n{np.round(results_matrix, 2)}\n"
+        #print(f"results: \n{np.round(results_matrix, 2)}")
+        #print(f"PIC x: \n{x}")
+        #print("list of kernels:")
+        #for i, kernel in enumerate(list_of_kernels):
+        #    print(f"{i}: {kernel.get_string_representation()}, {[entry.numpy() for entry in kernel.get_last_hyper_parameter()]}, noise: {kernel.noise}")
+        #print(f"labels: \n{clustering.labels_}")
+        if debug_outputs == None:
+            debug_outputs = f"results: \n{np.round(results_matrix, 2)}\n"
+        else:
+            debug_outputs += f"results: \n{np.round(results_matrix, 2)}\n"
         debug_outputs += f"PIC x: \n{x}\n"
         debug_outputs += "list of kernels:\n"
         for i, kernel in enumerate(list_of_kernels):
@@ -411,7 +416,7 @@ def main():
                              normalization=int(sys.argv[5]),
                              visual_output=False,
                              text_output=False)
-        ground_truth_df= pd.read_csv(sys.argv[1])
+        ground_truth_df = pd.read_csv(sys.argv[1])
         ground_truth = ground_truth_df["Anomaly"]
         ground_truth_labels = []
         for i in range(len(datasets)):
@@ -431,8 +436,8 @@ def main():
         clustering_methods = config["clustering_methods"]["clustering_methods"].split(',')
         normalization_methods = config["normalization_methods"]["normalization_methods"].split(',')
 
-        configs = product(metrics, clustering_methods, normalization_methods)
-        kernel_search_combinations = product(dataset_names, segment_lengths)
+        configs = list(product(metrics, clustering_methods, normalization_methods))
+        kernel_search_combinations = list(product(dataset_names, segment_lengths))
         from multiprocessing import Pool
 
         for dataset, segment_length in kernel_search_combinations:
