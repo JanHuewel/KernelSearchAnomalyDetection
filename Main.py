@@ -136,7 +136,7 @@ def kernel_search(dataset_name, segment_length = 100):
     return datasets, list_of_kernels, list_of_noises
 
 def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segment_length = 100, method = "cov", clustering_method = "PIC", number_of_clusters = 2,
-         normalization = 0, visual_output = False, text_output = True):
+         normalization = 0, visual_output = False, text_output = True, output_filename="output.txt"):
     # Used for sampling method
     number_of_samples = 500
     # check length of dataset
@@ -338,7 +338,7 @@ def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segmen
             debug_outputs += f"{i}: {kernel.get_string_representation()}, {[entry.numpy() for entry in kernel.get_last_hyper_parameter()]}, noise: {kernel.noise}\n"
         debug_outputs += f"labels: \n{clustering.labels_}\n"
 
-        results_file = open("output.txt", "w")
+        results_file = open(f"{output_filename}", "w")
         results_file.write(debug_outputs)
         results_file.close()
 
@@ -356,13 +356,18 @@ def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segmen
             x_lim_max = dataset_pandas['X'][(i+1)*segment_length-1]
             #print(f"{x_lim_min} - {x_lim_max}")
             ax.axvspan(x_lim_min, x_lim_max, facecolor=color_palet[clustering.labels_[i]], alpha=0.4)
-        plt.savefig('clustering.png')
+        plt.savefig(f'{output_filename[:-4]}.png')
         #plt.show()
 
     return clustering.labels_
 
 def run_cluster_search_and_store(params):
     dataset, segment_length, datasets, list_of_kernels, list_of_noises, config = params
+    data_split = dataset.split("/")
+    if len(data_split) == 1:
+        output_path = "Results/" + dataset + "_" + segment_length + "_" + "_".join(config)
+    else:
+        output_path = "Results/" + str(data_split[-1][:-4]) + "_" + segment_length + "_" + "_".join(config) + "_result.txt"
     try:
        labels = get_clusters(dataset_name=dataset,
                  datasets=datasets,
@@ -372,7 +377,8 @@ def run_cluster_search_and_store(params):
                  method=config[0],
                  clustering_method=config[1],
                  normalization=int(config[2]),
-                 visual_output=True)
+                 visual_output=True,
+                 output_filename=output_path)
     except:
         labels = "ERROR"
 
@@ -386,16 +392,6 @@ def run_cluster_search_and_store(params):
         result = ari_score(labels, ground_truth_labels)
     else:
         result = "ERROR"
-
-    data_split = dataset.split("/")
-    if len(data_split) == 1:
-        output_path = "Results/" + dataset + "_" + segment_length + "_" + "_".join(config)
-    else:
-        output_path = "Results/" + str(data_split[-1][:-4]) + "_" + segment_length + "_" + "_".join(config) + "_result.txt"
-    if os.path.exists("clustering.png"):
-        shutil.move("clustering.png", f"{output_path[:-4]}.png")
-    if os.path.exists("output.txt"):
-        shutil.move("output.txt", f"{output_path}")
     results_file = open(output_path, "a")
     results_file.write(f"RESULT: {str(result)}")
     results_file.close()
