@@ -1,4 +1,5 @@
 from os.path import exists
+import os
 import subprocess
 import shutil
 import numpy as np
@@ -36,18 +37,8 @@ def execute(cmd):
         # raise subprocess.CalledProcessError(return_code, cmd)
 
 
-for conf in config:
-    data_split = conf[0].split("/")
-    if len(data_split) == 1:
-        output_path = "Results/" + "_".join(conf)
-    else:
-        output_path = "Results/" + str(data_split[-1]) + "_".join(conf[1:])
-    out_file = open(output_path + ".txt", "w")
-    for path in execute(cmd + list(conf)):
-        out_file.write(path)
-        print(path, end="")
-        #popen.kill() #In case we have to kill something (TODO does this work?)
-    out_file.close()
-    if exists("clustering.png"):
-        shutil.move("clustering.png", f"{output_path}.png")
-
+for i in range(10):
+    for path in execute(cmd):
+        pass
+    folder = "Results/"
+    shutil.make_archive(folder, 'zip', os.getcwd() + "\\" + f"trial_{i}")
