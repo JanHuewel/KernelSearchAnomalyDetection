@@ -168,7 +168,7 @@ def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segmen
             #return -0.5 * tf.transpose(data) @ tf.linalg.inv(K2) @ data - 0.5 * tf.math.log(tf.linalg.det(K2)) - len(data)/2 * tf.cast(tf.math.log(2 * np.pi), tf.float64)
             L = tf.linalg.cholesky(K2)
             alpha = tf.linalg.cholesky_solve(L, data)
-            return -0.5 * tf.transpose(data) @ alpha -tf.math.log(tf.math.reduce_prod(tf.linalg.tensor_diag_part(L)))  - 0.5 * len(data) * tf.cast(tf.math.log(2 * np.pi), tf.float64)
+            return -0.5 * tf.transpose(data) @ alpha - sum([tf.math.log(L[i,i]) for i in range(len(data))]) - 0.5 * len(data) * tf.cast(tf.math.log(2 * np.pi), tf.float64)
 
         results_matrix = np.zeros((len(datasets), len(datasets)))
         for i in range(len(datasets)):
