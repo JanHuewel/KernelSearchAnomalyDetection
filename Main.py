@@ -93,7 +93,7 @@ def kernel_search(dataset_name, segment_length = 100):
         # agr.AlgorithmType.IKS, # LARGe
         # agr.AlgorithmType.TopDown_HKS # LGI
     ]
-    options = {"global_max_depth": 1, "local_max_depth": 3}
+    options = {"global_max_depth": 3, "local_max_depth": 3}
 
     # prepare data
     data_x = dataset_pandas['X'].to_numpy().reshape((dataset_length, 1))
