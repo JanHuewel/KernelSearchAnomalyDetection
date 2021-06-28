@@ -337,7 +337,8 @@ def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segmen
             debug_outputs = f"results: \n{np.round(results_matrix, 2)}\n"
         else:
             debug_outputs += f"results: \n{np.round(results_matrix, 2)}\n"
-        debug_outputs += f"PIC x: \n{x}\n"
+        if clustering_method == "PIC":
+            debug_outputs += f"PIC x: \n{x}\n"
         debug_outputs += "list of kernels:\n"
         for i, kernel in enumerate(list_of_kernels):
             debug_outputs += f"{i}: {kernel.get_string_representation()}, {[entry.numpy() for entry in kernel.get_last_hyper_parameter()]}, noise: {kernel.noise}\n"
@@ -373,6 +374,8 @@ def run_cluster_search_and_store(params):
         output_path = "Results/" + dataset + "_" + segment_length + "_" + "_".join(config)
     else:
         output_path = "Results/" + str(data_split[-1][:-4]) + "_" + segment_length + "_" + "_".join(config) + "_result.txt"
+    if config[1] == "Agg":
+        pdb.set_trace()
     try:
        labels = get_clusters(dataset_name=dataset,
                  datasets=datasets,
@@ -443,14 +446,10 @@ def main():
         for dataset, segment_length in kernel_search_combinations:
             datasets, list_of_kernels, list_of_noises = kernel_search(dataset, int(segment_length))
             total_combinations = [[dataset, segment_length, datasets, list_of_kernels, list_of_noises, config] for config in configs]
-            with Pool(len(total_combinations)) as p:
-                p.map(run_cluster_search_and_store, total_combinations)
-        #    for config in configs:
-        #        from multiprocessing import Pool
-        #        with Pool(5) as p:
-        #            p.map(run_cluster_search_and_store)
-        #            print(p.map(f, [1, 2, 3]))
-        #            run_cluster_search_and_store(config, dataset, segment_length)
+            for comb in total_combinations:
+                run_cluster_search_and_store(comb)
+            #with Pool(len(total_combinations)) as p:
+            #    p.map(run_cluster_search_and_store, total_combinations)
 
             # Load config file
             # Iterate over all combinations of the configs
