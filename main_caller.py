@@ -41,4 +41,4 @@ for i in range(10):
     for path in execute(cmd):
         pass
     folder = "Results/"
-    shutil.make_archive(folder, 'zip', os.getcwd() + "\\" + f"trial_{i}")
+    shutil.make_archive(f"trial_{i}", 'zip', os.path.join(os.getcwd(), folder))
