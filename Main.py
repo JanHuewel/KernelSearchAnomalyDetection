@@ -296,14 +296,14 @@ def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segmen
                         tf.math.reduce_max(abs(prediction_i - prediction_j), axis=0)) / number_of_samples
 
     np.set_printoptions(threshold=np.inf)
-    debug_outputs = None
     # norm results
     # results_matrix -= results_matrix.min()
     # results_matrix /= results_matrix.max()
     # ver 2
+    output = {}
     if normalization and text_output:
         #print(f"pre normalization results: \n{np.round(results_matrix, 3)}")
-        debug_outputs = f"pre normalization results: \n{np.round(results_matrix, 3)}"
+        output["pre_norm"] = np.round(results_matrix, 3)
     if normalization == 1: # shift matrix to be all non-negative. scale diagonal to 1, then set it to 0
         results_matrix -= min(0, results_matrix.min())
         for i in range(len(datasets)):
@@ -333,20 +333,14 @@ def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segmen
         #for i, kernel in enumerate(list_of_kernels):
         #    print(f"{i}: {kernel.get_string_representation()}, {[entry.numpy() for entry in kernel.get_last_hyper_parameter()]}, noise: {kernel.noise}")
         #print(f"labels: \n{clustering.labels_}")
-        if debug_outputs == None:
-            debug_outputs = f"results: \n{np.round(results_matrix, 2)}\n"
-        else:
-            debug_outputs += f"results: \n{np.round(results_matrix, 2)}\n"
+        output["results"] = np.round(results_matrix, 2)
         if clustering_method == "PIC":
-            debug_outputs += f"PIC x: \n{x}\n"
+            output["PIC"] = x
         debug_outputs += "list of kernels:\n"
-        for i, kernel in enumerate(list_of_kernels):
-            debug_outputs += f"{i}: {kernel.get_string_representation()}, {[entry.numpy() for entry in kernel.get_last_hyper_parameter()]}, noise: {kernel.noise}\n"
-        debug_outputs += f"labels: \n{clustering.labels_}\n"
-
-        results_file = open(f"{output_filename}", "w")
-        results_file.write(debug_outputs)
-        results_file.close()
+        output["kernels"] = list_of_kernels
+        output["labels"] = clustering.labels_
+        with open(f"{output_filename[:-4]}.json", "w") as write_file:
+            json.dump(data, write_file)
 
 
     # plot results
@@ -374,8 +368,6 @@ def run_cluster_search_and_store(params):
         output_path = "Results/" + dataset + "_" + segment_length + "_" + "_".join(config)
     else:
         output_path = "Results/" + str(data_split[-1][:-4]) + "_" + segment_length + "_" + "_".join(config) + "_result.txt"
-    if config[1] == "Agg":
-        pdb.set_trace()
     try:
        labels = get_clusters(dataset_name=dataset,
                  datasets=datasets,
