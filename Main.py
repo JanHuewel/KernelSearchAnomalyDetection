@@ -303,7 +303,7 @@ def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segmen
     output = {}
     if normalization and text_output:
         #print(f"pre normalization results: \n{np.round(results_matrix, 3)}")
-        output["pre_norm"] = np.round(results_matrix, 3)
+        output["pre_norm"] = np.round(results_matrix, 3).tolist()
     if normalization == 1: # shift matrix to be all non-negative. scale diagonal to 1, then set it to 0
         results_matrix -= min(0, results_matrix.min())
         for i in range(len(datasets)):
