@@ -336,7 +336,7 @@ def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segmen
         #print(f"labels: \n{clustering.labels_}")
         output["results"] = np.round(results_matrix, 2).tolist()
         if clustering_method == "PIC":
-            output["PIC"] = x
+            output["PIC"] = x.tolist()
         list_of_kernels_output = {}
         for i, kernel in enumerate(list_of_kernels):
             list_of_kernels_output[f"{i}"] = {"string": kernel.get_string_representation(),
@@ -346,7 +346,7 @@ def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segmen
         output["kernels"] = list_of_kernels_output
         output["labels"] = clustering.labels_.tolist()
         with open(f"{output_filename[:-4]}.json", "w") as write_file:
-            json.dump(output, write_file, indent="")
+            json.dump(output, write_file, indent=4)
 
 
     # plot results
@@ -399,9 +399,10 @@ def run_cluster_search_and_store(params):
         result = ari_score(labels, ground_truth_labels)
     else:
         result = "ERROR"
-    results_file = open(output_path, "a")
-    results_file.write(f"RESULT: {str(result)}")
-    results_file.close()
+    with open(f"{output_filename[:-4]}.json", "w+") as read_file:
+        temp = json.load(output, read_file)
+        temp["ARI"] = result
+        json.dump(output, read_file, indent=4)
 
 
 
