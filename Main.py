@@ -318,6 +318,7 @@ def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segmen
             results_matrix[:, i] /= results_matrix[i, i]
             results_matrix[i,i] = 0
 
+    #pdb.set_trace()
     # clustering
     if clustering_method == "PIC":
         x = pic(results_matrix, 1000, 1e-6)
@@ -333,14 +334,19 @@ def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segmen
         #for i, kernel in enumerate(list_of_kernels):
         #    print(f"{i}: {kernel.get_string_representation()}, {[entry.numpy() for entry in kernel.get_last_hyper_parameter()]}, noise: {kernel.noise}")
         #print(f"labels: \n{clustering.labels_}")
-        output["results"] = np.round(results_matrix, 2)
+        output["results"] = np.round(results_matrix, 2).tolist()
         if clustering_method == "PIC":
             output["PIC"] = x
-        debug_outputs += "list of kernels:\n"
-        output["kernels"] = list_of_kernels
-        output["labels"] = clustering.labels_
+        list_of_kernels_output = {}
+        for i, kernel in enumerate(list_of_kernels):
+            list_of_kernels_output[f"{i}"] = {"string": kernel.get_string_representation(),
+                                              "hyper": [entry.numpy().tolist() for entry in kernel.get_last_hyper_parameter()],
+                                              "noise": np.float64(kernel.noise)
+                                              }
+        output["kernels"] = list_of_kernels_output
+        output["labels"] = clustering.labels_.tolist()
         with open(f"{output_filename[:-4]}.json", "w") as write_file:
-            json.dump(data, write_file)
+            json.dump(output, write_file, indent="")
 
 
     # plot results
@@ -379,7 +385,8 @@ def run_cluster_search_and_store(params):
                  normalization=int(config[2]),
                  visual_output=True,
                  output_filename=output_path)
-    except:
+    except Exception as e:
+        print(e)
         labels = "ERROR"
 
     ground_truth_df= pd.read_csv(dataset)
@@ -438,10 +445,8 @@ def main():
         for dataset, segment_length in kernel_search_combinations:
             datasets, list_of_kernels, list_of_noises = kernel_search(dataset, int(segment_length))
             total_combinations = [[dataset, segment_length, datasets, list_of_kernels, list_of_noises, config] for config in configs]
-            for comb in total_combinations:
-                run_cluster_search_and_store(comb)
-            #with Pool(len(total_combinations)) as p:
-            #    p.map(run_cluster_search_and_store, total_combinations)
+            with Pool(len(total_combinations)) as p:
+                p.map(run_cluster_search_and_store, total_combinations)
 
             # Load config file
             # Iterate over all combinations of the configs
