@@ -400,11 +400,12 @@ def run_cluster_search_and_store(params):
     else:
         result = "ERROR"
     temp = 0
-    with open(f"{output_path[:-4]}.json", "r") as read_file:
-        temp = json.load(read_file)
-        temp["ARI"] = result
-    with open(f"{output_path[:-4]}.json", "w") as read_file:
-        json.dump(temp, read_file, indent=3)
+    if os.path.exists(f"{output_path[:-4]}.json"):
+        with open(f"{output_path[:-4]}.json", "r") as read_file:
+            temp = json.load(read_file)
+            temp["ARI"] = result
+        with open(f"{output_path[:-4]}.json", "w") as read_file:
+            json.dump(temp, read_file, indent=3)
 
 
 
