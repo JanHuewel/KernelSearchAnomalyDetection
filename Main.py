@@ -399,10 +399,12 @@ def run_cluster_search_and_store(params):
         result = ari_score(labels, ground_truth_labels)
     else:
         result = "ERROR"
-    with open(f"{output_filename[:-4]}.json", "w+") as read_file:
-        temp = json.load(output, read_file)
+    temp = 0
+    with open(f"{output_path[:-4]}.json", "r") as read_file:
+        temp = json.load(read_file)
         temp["ARI"] = result
-        json.dump(output, read_file, indent=4)
+    with open(f"{output_path[:-4]}.json", "w") as read_file:
+        json.dump(temp, read_file, indent=3)
 
 
 
@@ -446,6 +448,8 @@ def main():
         for dataset, segment_length in kernel_search_combinations:
             datasets, list_of_kernels, list_of_noises = kernel_search(dataset, int(segment_length))
             total_combinations = [[dataset, segment_length, datasets, list_of_kernels, list_of_noises, config] for config in configs]
+            #for comb in total_combinations:
+            #    run_cluster_search_and_store(comb)
             with Pool(len(total_combinations)) as p:
                 p.map(run_cluster_search_and_store, total_combinations)
 
