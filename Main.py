@@ -394,7 +394,8 @@ def run_cluster_search_and_store(params):
     ground_truth_labels = []
     for i in range(len(datasets)):
         block = list(ground_truth[i*int(segment_length):(i+1)*int(segment_length)])
-        ground_truth_labels.append(max(set(block), key=block.count))
+        # ground_truth_labels.append(max(set(block), key=block.count)) # select if is majority of segment (useful in multiclass)
+        ground_truth_labels.append(max(block)) # select if exists in segment (if only 2 categories exist)
     if not labels == "ERROR":
         result = ari_score(labels, ground_truth_labels)
     else:
@@ -404,6 +405,7 @@ def run_cluster_search_and_store(params):
         with open(f"{output_path[:-4]}.json", "r") as read_file:
             temp = json.load(read_file)
             temp["ARI"] = result
+            temp["ground_truth"] = ground_truth_labels
         with open(f"{output_path[:-4]}.json", "w") as read_file:
             json.dump(temp, read_file, indent=3)
 
