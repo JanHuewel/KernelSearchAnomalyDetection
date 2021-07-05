@@ -175,8 +175,8 @@ def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segmen
             cov_matrix_i = cov.HolisticCovarianceMatrix(list_of_kernels[i])
             for j in range(i+1):
                 cov_matrix_j = cov.HolisticCovarianceMatrix(list_of_kernels[j])
-                cov_matrix_i.set_data_input(datasets[i])
-                cov_matrix_j.set_data_input(datasets[j])
+                cov_matrix_i.set_data_input(datasets[j])
+                cov_matrix_j.set_data_input(datasets[i])
                 a = loglike(cov_matrix_i.get_K(list_of_kernels[i].get_last_hyper_parameter()), list_of_noises[i], datasets[j].data_y_train)
                 b = loglike(cov_matrix_j.get_K(list_of_kernels[j].get_last_hyper_parameter()), list_of_noises[j], datasets[i].data_y_train)
                 if clustering_method == "PIC":
