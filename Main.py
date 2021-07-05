@@ -362,7 +362,7 @@ def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segmen
             x_lim_max = dataset_pandas['X'][(i+1)*segment_length-1]
             #print(f"{x_lim_min} - {x_lim_max}")
             ax.axvspan(x_lim_min, x_lim_max, facecolor=color_palet[clustering.labels_[i]], alpha=0.4)
-        plt.savefig(f'{output_filename[:-4]}.png')
+        plt.savefig(f'{output_filename[:-4]}.png', bbox_inches='tight')
         #plt.show()
 
     return clustering.labels_
