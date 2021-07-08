@@ -37,7 +37,7 @@ def execute(cmd):
         # raise subprocess.CalledProcessError(return_code, cmd)
 
 
-for i in range(10):
+for i in range(0, 23):
     for path in execute(cmd):
         pass
     folder = "Results/"
