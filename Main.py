@@ -194,14 +194,18 @@ def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segmen
                 cov_matrix_j = cov.HolisticCovarianceMatrix(list_of_kernels[j])
                 cov_matrix_i.set_data_input(di.DataInput(datasets[j].data_x_train,datasets[j].data_y_train, datasets[i].data_x_train, datasets[i].data_y_train))
                 cov_matrix_j.set_data_input(di.DataInput(datasets[i].data_x_train,datasets[i].data_y_train, datasets[j].data_x_train, datasets[j].data_y_train))
-                prediction_j = cov_matrix_i.get_K_s(list_of_kernels[i].get_last_hyper_parameter()) \
+                K_s_i = cov_matrix_i.get_K_s(list_of_kernels[i].get_last_hyper_parameter())
+                K_s_j = cov_matrix_j.get_K_s(list_of_kernels[j].get_last_hyper_parameter())
+                cov_matrix_i.set_data_input(di.DataInput(datasets[i].data_x_train, datasets[i].data_y_train, datasets[j].data_x_train,datasets[j].data_y_train))
+                cov_matrix_j.set_data_input(di.DataInput(datasets[j].data_x_train, datasets[j].data_y_train, datasets[i].data_x_train,datasets[i].data_y_train))
+                prediction_j = K_s_i \
                           @ cov_matrix_i.get_K_inv(list_of_kernels[i].get_last_hyper_parameter(), list_of_noises[i]) \
                           @ datasets[i].data_y_train
-                prediction_i = cov_matrix_j.get_K_s(list_of_kernels[j].get_last_hyper_parameter()) \
+                prediction_i = K_s_j \
                           @ cov_matrix_j.get_K_inv(list_of_kernels[j].get_last_hyper_parameter(), list_of_noises[j]) \
                           @ datasets[j].data_y_train
-                error_i = sum(tf.math.square(prediction_i - datasets[i].data_y_train))
-                error_j = sum(tf.math.square(prediction_j - datasets[j].data_y_train))
+                error_i = sum(tf.math.square(prediction_i - datasets[i].data_y_train)) / len(prediction_i)
+                error_j = sum(tf.math.square(prediction_j - datasets[j].data_y_train)) / len(prediction_j)
                 if clustering_method == "PIC":
                     results_matrix[i, j] = results_matrix[j, i] = 1.0 / (error_i + error_j)
                 else:
