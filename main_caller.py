@@ -1,4 +1,5 @@
 from os.path import exists
+import os
 import subprocess
 import shutil
 import numpy as np
@@ -36,18 +37,21 @@ def execute(cmd):
         # raise subprocess.CalledProcessError(return_code, cmd)
 
 
-for conf in config:
-    data_split = conf[0].split("/")
-    if len(data_split) == 1:
-        output_path = "Results/" + "_".join(conf)
-    else:
-        output_path = "Results/" + str(data_split[-1]) + "_".join(conf[1:])
-    out_file = open(output_path + ".txt", "w")
-    for path in execute(cmd + list(conf)):
-        out_file.write(path)
-        print(path, end="")
-        #popen.kill() #In case we have to kill something (TODO does this work?)
-    out_file.close()
-    if exists("clustering.png"):
-        shutil.move("clustering.png", f"{output_path}.png")
+for i in range(0, 23):
+    for path in execute(cmd):
+        pass
+    folder = "Results/"
+    shutil.make_archive(f"trial_{i}", 'zip', os.path.join(os.getcwd(), folder))
+    for filename in os.listdir(folder):
+        file_path = os.path.join(folder, filename)
+        try:
+            if os.path.isfile(file_path) or os.path.islink(file_path):
+                os.unlink(file_path)
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)
+        except Exception as e:
+            print('Failed to delete %s. Reason: %s' % (file_path, e))
+
+
+
 
