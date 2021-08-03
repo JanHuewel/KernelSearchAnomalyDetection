@@ -7,7 +7,7 @@ import sys
 import pandas as pd
 import matplotlib.pyplot as plt
 import json
-import pdb
+
 if __name__ == '__main__':
     multiprocessing.set_start_method('spawn')
 
@@ -21,7 +21,6 @@ import gpbasics.global_parameters as global_param
 global_param.init(tf_parallel=os.cpu_count())
 
 import gpbasics.Statistics.CovarianceMatrix as cov
-import gpbasics.DataHandling.DatasetHandler as dsh
 import gpbasics.DataHandling.DataInput as di
 import gpminference.Experiments.Experiment as exp
 import gpminference.AutomaticGpmRetrieval as agr
@@ -36,7 +35,7 @@ import tensorflow as tf
 import numpy as np
 import logging
 from PIC import pic
-from sklearn.cluster import KMeans, DBSCAN, AgglomerativeClustering
+from sklearn.cluster import KMeans, AgglomerativeClustering
 from gpbasics.Statistics.GaussianProcess import GaussianProcess
 from sklearn.metrics import adjusted_rand_score as ari_score
 
@@ -62,21 +61,9 @@ global_param.p_dtype = tf.float64
 global_param.p_cov_matrix_jitter = tf.constant(1e-8, dtype=global_param.p_dtype)
 
 def kernel_search(dataset_name, segment_length = 100):
-
-    #dataset_name = "data/dd_test_basic_anomaly2.csv"
-    #segment_length = 100
-    #number_of_clusters = 2
-    #method = "cov" # cov, likelihood, MSE, KLD, sampling, sampling2
-    #normalization = 1 # False/None, 1, 2
-
     """
-    best normalization methods:
-    cov: 1? , results: good, not reproducible
-    likelihood: 0, result: PERFECT
-    MSE: None / 2, result: PERFECT
-    KLD: tbd
-    sampling: indifferent, result: bad
-    sampling2: tbd
+    Partition the data and perform segment-wise kernel search via CKS.
+    Return segments, kernel expressions and noises.
     """
 
     data_normalization = "Z-scale" # Z-scale / 0-1
@@ -85,15 +72,8 @@ def kernel_search(dataset_name, segment_length = 100):
     dataset_pandas = pd.read_csv(dataset_name)
     dataset_length = len(dataset_pandas)
 
-    algorithms = [
-         agr.AlgorithmType.CKS,
-        # agr.AlgorithmType.ABCD,
-        # agr.AlgorithmType.SKC,
-        # agr.AlgorithmType.SKS,  # 3CS
-        # agr.AlgorithmType.IKS, # LARGe
-        # agr.AlgorithmType.TopDown_HKS # LGI
-    ]
-    options = {"global_max_depth": 3, "local_max_depth": 3}
+    algorithms = [agr.AlgorithmType.CKS]
+    options = {"global_max_depth": 3}
 
     # prepare data
     data_x = dataset_pandas['X'].to_numpy().reshape((dataset_length, 1))
@@ -109,6 +89,8 @@ def kernel_search(dataset_name, segment_length = 100):
         data_y /= data_y.max()
         data_x -= data_x.min()
         data_x = data_x / data_x.max()
+
+    # create segments
     datasets = list()
     for i in range(int(dataset_length/segment_length)):
         data_input_format = di.DataInput(data_x[i*segment_length:(i+1)*segment_length],
@@ -121,27 +103,26 @@ def kernel_search(dataset_name, segment_length = 100):
     list_of_kernels = []
     list_of_noises = []
     for i in range(int(dataset_length/segment_length)):
-
         exps = exp.execute_retrieval_experiments_set(
             datasets[i], algorithms=algorithms, mean_function_search=False, options=options, illustrate=False,
             model_selection_metric=met.MetricType.LL, local_approx=mht.MatrixApproximations.NONE,
             numerical_matrix_handling=mht.NumericalMatrixHandlingType.CHOLESKY_BASED, optimize_metric=met.MetricType.LL,
-            random_restart=10) #to optimize
+            random_restart=10)
 
         list_of_kernels.append(exps[1]["best_gp"].covariance_matrix.kernel)
         list_of_noises.append(exps[1]["best_gp"].covariance_matrix.kernel.get_noise())
 
-    #for i, kernel in enumerate(list_of_kernels):
-    #    print(f"{i}: {kernel.get_string_representation()}, {[entry.numpy() for entry in kernel.get_last_hyper_parameter()]}, noise: {kernel.noise}")
     return datasets, list_of_kernels, list_of_noises
 
 def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segment_length = 100, method = "cov", clustering_method = "PIC", number_of_clusters = 2,
          normalization = 0, visual_output = False, text_output = True, output_filename="output.txt"):
-    # Used for sampling method
+    """
+    Take the results of kernel_search and create clusters based on the additional parameters.
+    """
+    # Number of samples drawn in the sampling method
     number_of_samples = 500
     # check length of dataset
     dataset_pandas = pd.read_csv(dataset_name)
-    dataset_length = len(dataset_pandas)
     # build distance matrix
     if method == "cov":
         # build matrix out of distances of cov matrices
@@ -155,17 +136,15 @@ def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segmen
                 cov_matrix_j.set_data_input(data_for_cov_matrix)
                 K1 = cov_matrix_i.get_K(list_of_kernels[i].get_last_hyper_parameter())
                 K2 = cov_matrix_j.get_K(list_of_kernels[j].get_last_hyper_parameter())
-                #print(f"{i}, {j} \nK1 : {np.round(K1,1)} \nK2 : {np.round(K2,1)}")
                 if clustering_method == "PIC":
-                    results_matrix[i,j] = results_matrix[j,i] = 1.0 / (tf.norm(K1 - K2, axis=[-1,-2]).numpy() + abs(i-j) * 0.0 + 1)
+                    results_matrix[i, j] = results_matrix[j,i] = 1.0 / (tf.norm(K1 - K2, axis=[-1,-2]).numpy())
                 else:
-                    results_matrix[i,j] = results_matrix[j,i] = tf.norm(K1 - K2, axis=[-1,-2]).numpy() + abs(i-j) * 0.0
+                    results_matrix[i, j] = results_matrix[j,i] = tf.norm(K1 - K2, axis=[-1,-2]).numpy()
 
     elif method == "likelihood":
         # build matrix out of likelihoods
         def loglike(covariance : tf.Tensor, noise : tf.Tensor, data : tf.Tensor):
             K2 : tf.Tensor = covariance + noise.numpy() * tf.eye(len(data), dtype=tf.float64)
-            #return -0.5 * tf.transpose(data) @ tf.linalg.inv(K2) @ data - 0.5 * tf.math.log(tf.linalg.det(K2)) - len(data)/2 * tf.cast(tf.math.log(2 * np.pi), tf.float64)
             L = tf.linalg.cholesky(K2)
             alpha = tf.linalg.cholesky_solve(L, data)
             return -0.5 * tf.transpose(data) @ alpha - sum([tf.math.log(L[i,i]) for i in range(len(data))]) - 0.5 * len(data) * tf.cast(tf.math.log(2 * np.pi), tf.float64)
@@ -186,7 +165,7 @@ def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segmen
 
 
     elif method == "MSE":
-        # build matrix with MSE
+        # build matrix with Mean Square Error
         results_matrix = np.zeros((len(datasets), len(datasets)))
         for i in range(len(datasets)):
             cov_matrix_i = cov.HolisticCovarianceMatrix(list_of_kernels[i])
@@ -232,9 +211,9 @@ def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segmen
                     results_matrix[i, j] = results_matrix[j, i] = 1.0 / (kld(K1, K2) + kld(K2, K1) + 1.0)
                 else:
                     results_matrix[i, j] = results_matrix[j, i] = kld(K1, K2) + kld(K2, K1)
-                if i == 2 and j == 1:
+                if DEBUG:
                     # ----
-                    if DEBUG:
+                    if i == 2 and j == 1:
                         print("covariance matrix")
                         print(f"{i}, {j} \nK1 : {np.round(K1, 3)} \nK2 : {np.round(K2, 3)}")
                         print("eigenvalues")
@@ -268,14 +247,6 @@ def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segmen
                 else:
                     results_matrix[i, j] = results_matrix[j, i] = sum(tf.math.reduce_max(abs(prediction_i - prediction_j), axis=0)) / number_of_samples
 
-                #fig, ax = plt.subplots()
-                #for plotting_i in range(3):
-                #    ax.plot(np.linspace(-5,5,100), prediction_i[:,plotting_i], "red")
-                #ax.set_ylim([-5,5])
-                #ax.scatter(x = data_for_gp.data_x_train, y = data_for_gp.data_y_train, color = "black", marker="x")
-                #plt.title(f"{i}, {j}")
-                #plt.show()
-
     elif method == "sampling2":
         results_matrix = np.zeros((len(datasets), len(datasets)))
         for i in range(len(datasets)):
@@ -299,12 +270,8 @@ def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segmen
 
     np.set_printoptions(threshold=np.inf)
     # norm results
-    # results_matrix -= results_matrix.min()
-    # results_matrix /= results_matrix.max()
-    # ver 2
     output = {}
     if normalization and text_output:
-        #print(f"pre normalization results: \n{np.round(results_matrix, 3)}")
         output["pre_norm"] = np.round(results_matrix, 3).tolist()
     if normalization == 1: # shift matrix to be all non-negative. scale diagonal to 1, then set it to 0
         results_matrix -= min(0, results_matrix.min())
@@ -318,9 +285,8 @@ def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segmen
             results_matrix[i, :] /= np.sqrt(results_matrix[i, i])
         for i in range(len(datasets)):
             results_matrix[:, i] /= results_matrix[i, i]
-            results_matrix[i,i] = 0
+            results_matrix[i, i] = 0
 
-    #pdb.set_trace()
     # clustering
     if clustering_method == "PIC":
         x = pic(results_matrix, 1000, 1e-6)
@@ -330,12 +296,13 @@ def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segmen
 
     # terminal output to check results
     if text_output:
-        #print(f"results: \n{np.round(results_matrix, 2)}")
-        #print(f"PIC x: \n{x}")
-        #print("list of kernels:")
-        #for i, kernel in enumerate(list_of_kernels):
-        #    print(f"{i}: {kernel.get_string_representation()}, {[entry.numpy() for entry in kernel.get_last_hyper_parameter()]}, noise: {kernel.noise}")
-        #print(f"labels: \n{clustering.labels_}")
+        if DEBUG:
+            print(f"results: \n{np.round(results_matrix, 2)}")
+            print(f"PIC x: \n{x}")
+            print("list of kernels:")
+            for i, kernel in enumerate(list_of_kernels):
+                print(f"{i}: {kernel.get_string_representation()}, {[entry.numpy() for entry in kernel.get_last_hyper_parameter()]}, noise: {kernel.noise}")
+            print(f"labels: \n{clustering.labels_}")
         output["results"] = np.round(results_matrix, 2).tolist()
         if clustering_method == "PIC":
             output["PIC"] = x.tolist()
@@ -370,6 +337,10 @@ def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segmen
     return clustering.labels_
 
 def run_cluster_search_and_store(params):
+    """
+    Perform kernel search and clustering based on the parameters in params.
+    Compare the results to the ground truth and save all outputs and the error to a file.
+    """
     dataset, segment_length, datasets, list_of_kernels, list_of_noises, config = params
     data_split = dataset.split("/")
     if len(data_split) == 1:
@@ -402,7 +373,6 @@ def run_cluster_search_and_store(params):
         result = ari_score(labels, ground_truth_labels)
     else:
         result = "ERROR"
-    temp = 0
     if os.path.exists(f"{output_path[:-4]}.json"):
         with open(f"{output_path[:-4]}.json", "r") as read_file:
             temp = json.load(read_file)
@@ -414,7 +384,13 @@ def run_cluster_search_and_store(params):
 
 
 def main():
+    """
+    Read parameters from sys.argv if provided, otherwise from config.ini file.
+    Perform kernel search and clustering based on provided parameters.
+    Compare results to ground truth and save the error additionally to the normal output to a file.
+    """
     if len(sys.argv) == 6:
+        # if provided, use sys.argv as parameters
         datasets, list_of_kernels, list_of_noises = kernel_search(sys.argv[1],int(sys.argv[2]))
         labels = get_clusters(dataset_name=sys.argv[1],
                              datasets=datasets,
@@ -438,6 +414,7 @@ def main():
         results_file.write(result)
         results_file.close()
     else:
+        # if sys.argv is not sufficiently given, get parameters from config.ini and pool over all given combinations
         config = configparser.ConfigParser()
         config.read("config.ini")
         dataset_names = config["dataset_names"]["dataset_names"].split(',')
