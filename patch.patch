@@ -1,7 +1,7 @@
-diff --git a/main/gpbasics/DataHandling/DataInput.py b/main/gpbasics/DataHandling/DataInput.py
+diff --git a/GaussianProcessFundamentals/main/gpbasics/DataHandling/DataInput.py b/GaussianProcessFundamentals/main/gpbasics/DataHandling/DataInput.py
 index e103f7c..2fe6cb9 100644
---- a/main/gpbasics/DataHandling/DataInput.py
-+++ b/main/gpbasics/DataHandling/DataInput.py
+--- a/GaussianProcessFundamentals/main/gpbasics/DataHandling/DataInput.py
++++ b/GaussianProcessFundamentals/main/gpbasics/DataHandling/DataInput.py
 @@ -188,6 +188,13 @@ class DataInput(AbstractDataInput):
              for data_input in k_fold_data_inputs]
  
@@ -16,10 +16,10 @@ index e103f7c..2fe6cb9 100644
  class PartitionedDataInput(DataInput):
      def __init__(self, data_x_train: np.ndarray, data_y_train: np.ndarray, data_x_test: np.ndarray,
                   data_y_test: np.ndarray, data_inputs: List[DataInput]):
-diff --git a/main/gpbasics/DataHandling/DatasetHandler.py b/main/gpbasics/DataHandling/DatasetHandler.py
+diff --git a/GaussianProcessFundamentals/main/gpbasics/DataHandling/DatasetHandler.py b/GaussianProcessFundamentals/main/gpbasics/DataHandling/DatasetHandler.py
 index ab06d97..4dc32d2 100644
---- a/main/gpbasics/DataHandling/DatasetHandler.py
-+++ b/main/gpbasics/DataHandling/DatasetHandler.py
+--- a/GaussianProcessFundamentals/main/gpbasics/DataHandling/DatasetHandler.py
++++ b/GaussianProcessFundamentals/main/gpbasics/DataHandling/DatasetHandler.py
 @@ -11,7 +11,7 @@ import logging
  
  
@@ -29,10 +29,10 @@ index ab06d97..4dc32d2 100644
  
  
  class DatasetHandler:
-diff --git a/main/gpbasics/Optimizer/Fitter.py b/main/gpbasics/Optimizer/Fitter.py
+diff --git a/GaussianProcessFundamentals/main/gpbasics/Optimizer/Fitter.py b/GaussianProcessFundamentals/main/gpbasics/Optimizer/Fitter.py
 index a1a7811..0650610 100644
---- a/main/gpbasics/Optimizer/Fitter.py
-+++ b/main/gpbasics/Optimizer/Fitter.py
+--- a/GaussianProcessFundamentals/main/gpbasics/Optimizer/Fitter.py
++++ b/GaussianProcessFundamentals/main/gpbasics/Optimizer/Fitter.py
 @@ -48,6 +48,134 @@ class GradientFitter(Fitter):
      pass
  
@@ -168,10 +168,10 @@ index a1a7811..0650610 100644
  class VariationalSgdFitter(Fitter):
      def __init__(
              self, data_input: Union[AbstractDataInput, List[AbstractDataInput]],
-diff --git a/main/gpbasics/global_parameters.py b/main/gpbasics/global_parameters.py
+diff --git a/GaussianProcessFundamentals/main/gpbasics/global_parameters.py b/GaussianProcessFundamentals/main/gpbasics/global_parameters.py
 index be43d2a..e7cfb41 100644
---- a/main/gpbasics/global_parameters.py
-+++ b/main/gpbasics/global_parameters.py
+--- a/GaussianProcessFundamentals/main/gpbasics/global_parameters.py
++++ b/GaussianProcessFundamentals/main/gpbasics/global_parameters.py
 @@ -43,7 +43,7 @@ def init(tf_parallel: int, worker: bool = False):
      p_dtype = tf.float64
      p_cp_operator_type = ChangePointOperatorType.INDICATOR
@@ -181,3 +181,31 @@ index be43d2a..e7cfb41 100644
      # SKC ideal: p_cov_matrix_jitter = tf.constant(1e-1, dtype=p_dtype)
      p_nystroem_ratio = 0.1
      p_check_hyper_parameters = False
+diff --git a/GaussianProcessModelInference/main/gpminference/Experiments/Experiment.py b/GaussianProcessModelInference/main/gpminference/Experiments/Experiment.py
+index 342414f..b265894 100644
+--- a/GaussianProcessModelInference/main/gpminference/Experiments/Experiment.py
++++ b/GaussianProcessModelInference/main/gpminference/Experiments/Experiment.py
+@@ -191,10 +191,12 @@ def execute_retrieval_experiments_set(
+ 
+         logging.info("### End Experiment")
+ 
+-    save_experiments_results(experiment, experiments, name, path)
++    #save_experiments_results(experiment, experiments, name, path)
+ 
+     next_set_id += 1
+ 
++    return experiments
++
+ 
+ def complete_options(len_x: int, options: dict) -> dict:
+     if options is None:
+@@ -426,7 +428,8 @@ class RetrievalExperiment(gr.GpmRetrieval):
+             "elapsed_time_seconds_search": elapsed_time_search, "BIC": float(bic), "LL": float(ll), "MSE": float(mse),
+             "mean_function": self.mean_function.get_string_representation(),
+             'kernel_hyper_parameter': k_hyp, 'mean_function_hyper_parameter': mf_hyper_parameter_list,
+-            "inducing_points": inducing_points
++            "inducing_points": inducing_points,
++            "best_gp": best_gp
+         }
+ 
+         if isinstance(best_gp, gp.PartitionedGaussianProcess):
