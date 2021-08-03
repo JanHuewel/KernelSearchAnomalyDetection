@@ -1,5 +1,4 @@
 from itertools import product
-import shutil
 import configparser
 import multiprocessing
 import os
@@ -33,7 +32,6 @@ import gpbasics.Metrics.MatrixHandlingTypes as mht
 import gpminference.autogpmr_parameters as auto_gpm_param
 import tensorflow as tf
 import numpy as np
-import logging
 from PIC import pic
 from sklearn.cluster import KMeans, AgglomerativeClustering
 from gpbasics.Statistics.GaussianProcess import GaussianProcess
@@ -52,7 +50,7 @@ global_param.p_used_base_mean_functions = [bmf.ConstantMeanFunction, bmf.LinearM
 global_param.p_default_hierarchical_kernel_expansion = \
     kexp.KernelExpansionStrategyType.BasicHierarchical
 
-global_param.p_gradient_fitter = f.VariationalSgdFitter #f.ADAMFitter
+global_param.p_gradient_fitter = f.VariationalSgdFitter
 
 auto_gpm_param.p_model_selection_with_test_data = True
 
@@ -64,6 +62,10 @@ def kernel_search(dataset_name, segment_length = 100):
     """
     Partition the data and perform segment-wise kernel search via CKS.
     Return segments, kernel expressions and noises.
+
+    Parameters:
+    dataset_name: string, name of the file containing the data
+    segment_length: int, length of an individual segment
     """
 
     data_normalization = "Z-scale" # Z-scale / 0-1
@@ -118,6 +120,20 @@ def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segmen
          normalization = 0, visual_output = False, text_output = True, output_filename="output.txt"):
     """
     Take the results of kernel_search and create clusters based on the additional parameters.
+
+    Parameters:
+    dataset_name: string, name of the file containing the dataset
+    datasets: list(DataInput), list of segments
+    list_of_kernels: list(Kernel), list of kernels
+    list_of_noises: list(tf.Tensor), list of jitters for the segments
+    segment_length: int, length of individual segments
+    method: string ('cov', 'likelihood', 'MSE', 'KLD', 'sampling', 'sampling2'), method used to build affinity/distance matrix
+    clustering_method: string ('PIC', 'Agg'), method used for clustering. PIC uses affinity matrices, Agglomerative clustering uses distances
+    number_of_clusters: int, amount of clusters
+    normalization: int (0,1,2), method of normalization. For the paper we only used 0 and 1
+    visual_output: bool, determines if plots are shown
+    text_output: bool, determines if text is displayed / written to a file
+    output_filename: string, name of file that is used to save outputs
     """
     # Number of samples drawn in the sampling method
     number_of_samples = 500
@@ -191,7 +207,7 @@ def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segmen
                     results_matrix[i, j] = results_matrix[j, i] = (error_i + error_j)
 
     elif method == "KLD":
-        #TODO catch instances where size of j and i are different
+        # only applicable of total length of dataset is dividable by segment_length
         def kld(sigma0: tf.Tensor, sigma1: tf.Tensor):
             L0 = tf.linalg.cholesky(sigma0)
             L1 = tf.linalg.cholesky(sigma1)
@@ -340,6 +356,9 @@ def run_cluster_search_and_store(params):
     """
     Perform kernel search and clustering based on the parameters in params.
     Compare the results to the ground truth and save all outputs and the error to a file.
+
+    Parameters:
+    params: list, contains dataset, segment_length, datasets, list_of_kernels, list_of_noises, config
     """
     dataset, segment_length, datasets, list_of_kernels, list_of_noises, config = params
     data_split = dataset.split("/")

@@ -1,3 +1,8 @@
+"""
+Performs kernel search and clustering from Main.py on data provided via lists of parameters in this file.
+The results are printed as a table for easy comparison.
+"""
+
 from Main import kernel_search, get_clusters
 import pandas as pd
 from sklearn.metrics import adjusted_rand_score as ari_score
