@@ -1,0 +1,28 @@
+diff --git a/main/gpminference/Experiments/Experiment.py b/main/gpminference/Experiments/Experiment.py
+index 342414f..b265894 100644
+--- a/main/gpminference/Experiments/Experiment.py
++++ b/main/gpminference/Experiments/Experiment.py
+@@ -191,10 +191,12 @@ def execute_retrieval_experiments_set(
+ 
+         logging.info("### End Experiment")
+ 
+-    save_experiments_results(experiment, experiments, name, path)
++    #save_experiments_results(experiment, experiments, name, path)
+ 
+     next_set_id += 1
+ 
++    return experiments
++
+ 
+ def complete_options(len_x: int, options: dict) -> dict:
+     if options is None:
+@@ -426,7 +428,8 @@ class RetrievalExperiment(gr.GpmRetrieval):
+             "elapsed_time_seconds_search": elapsed_time_search, "BIC": float(bic), "LL": float(ll), "MSE": float(mse),
+             "mean_function": self.mean_function.get_string_representation(),
+             'kernel_hyper_parameter': k_hyp, 'mean_function_hyper_parameter': mf_hyper_parameter_list,
+-            "inducing_points": inducing_points
++            "inducing_points": inducing_points,
++            "best_gp": best_gp
+         }
+ 
+         if isinstance(best_gp, gp.PartitionedGaussianProcess):

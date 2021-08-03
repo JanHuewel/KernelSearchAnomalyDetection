@@ -1,0 +1,183 @@
+diff --git a/main/gpbasics/DataHandling/DataInput.py b/main/gpbasics/DataHandling/DataInput.py
+index e103f7c..2fe6cb9 100644
+--- a/main/gpbasics/DataHandling/DataInput.py
++++ b/main/gpbasics/DataHandling/DataInput.py
+@@ -188,6 +188,13 @@ class DataInput(AbstractDataInput):
+             for data_input in k_fold_data_inputs]
+ 
+ 
++
++    def join(self, other):
++        return DataInput(np.concatenate((self.data_x_train, other.data_x_train)),
++                         np.concatenate((self.data_y_train, other.data_y_train)),
++                         np.concatenate((self.data_x_test, other.data_x_test)),
++                         np.concatenate((self.data_y_test, other.data_y_test)))
++
+ class PartitionedDataInput(DataInput):
+     def __init__(self, data_x_train: np.ndarray, data_y_train: np.ndarray, data_x_test: np.ndarray,
+                  data_y_test: np.ndarray, data_inputs: List[DataInput]):
+diff --git a/main/gpbasics/DataHandling/DatasetHandler.py b/main/gpbasics/DataHandling/DatasetHandler.py
+index ab06d97..4dc32d2 100644
+--- a/main/gpbasics/DataHandling/DatasetHandler.py
++++ b/main/gpbasics/DataHandling/DatasetHandler.py
+@@ -11,7 +11,7 @@ import logging
+ 
+ 
+ def get_default_path() -> str:
+-    return "data/"
++    return '' #"data/"
+ 
+ 
+ class DatasetHandler:
+diff --git a/main/gpbasics/Optimizer/Fitter.py b/main/gpbasics/Optimizer/Fitter.py
+index a1a7811..0650610 100644
+--- a/main/gpbasics/Optimizer/Fitter.py
++++ b/main/gpbasics/Optimizer/Fitter.py
+@@ -48,6 +48,134 @@ class GradientFitter(Fitter):
+     pass
+ 
+ 
++class ADAMFitter(Fitter):
++    def __init__(self, data_input: Union[AbstractDataInput, List[AbstractDataInput]],
++                gaussian_process: gp.AbstractGaussianProcess, metric_type: met.MetricType, from_distribution: bool,
++                local_approx: mht.GlobalApproximationsType, numerical_matrix_handling: mht.NumericalMatrixHandlingType,
++                subset_size: int = None):
++        super(ADAMFitter, self).__init__(data_input, gaussian_process, metric_type, ft.FitterType.NON_GRADIENT, from_distribution,
++            local_approx, numerical_matrix_handling, subset_size)
++
++    def fit(self) -> Tuple[tf.Tensor, tf.Tensor, List[tf.Tensor], tf.Tensor, tf.Tensor]:
++        xrange: List[List[float]]
++        n: int
++        if isinstance(self.data_input, list):
++            xrange = self.data_input[0].get_x_range()
++            n = self.data_input[0].n_train
++        else:
++            xrange = self.data_input.get_x_range()
++            n = self.data_input.n_train
++
++        default_noise = tf.Variable(global_param.p_cov_matrix_jitter, dtype=global_param.p_dtype)
++
++        kernel = self._gp.covariance_matrix.kernel
++        hyper_parameter: List[tf.Tensor] = kernel.get_default_hyper_parameter(xrange, n, self.from_distribution)
++
++        if isinstance(self.metric, list) and (self.metric[0].local_approx is mht.MatrixApproximations.SKC_LOWER_BOUND or \
++                self.metric[0].local_approx is mht.MatrixApproximations.BASIC_NYSTROEM):
++            indices = tf.Variable(tf.random.stateless_uniform(
++                [self.data_input[0].n_inducting_train, 1], minval=0, maxval=1,
++                dtype=tf.float64, seed=[self.data_input[0].seed, 1]))
++
++        elif isinstance(self.metric, met.AbstractMetric) and \
++                (self.metric.local_approx is mht.MatrixApproximations.SKC_LOWER_BOUND or \
++                self.metric.local_approx is mht.MatrixApproximations.BASIC_NYSTROEM):
++            indices = tf.Variable(tf.random.stateless_uniform(
++                [self.data_input.n_inducting_train, 1], minval=0, maxval=1,
++                dtype=tf.float64, seed=[self.data_input.seed, 1]))
++        else:
++            indices = None
++
++        def opt():
++            return self.metric.get_metric(hyper_parameter, default_noise, indices)
++
++        def opt_optimize_noise():
++            return self.metric.get_metric(hyper_parameter[1:], tf.abs(hyper_parameter[:1][0]), indices)
++
++        def opt_kfold():
++            return tf.reduce_mean([m.get_metric(hyper_parameter, default_noise, indices) for m in self.metric])
++
++        def opt_optimize_noise_kfold():
++            return tf.reduce_mean([m.get_metric(hyper_parameter[1:], tf.abs(hyper_parameter[:1][0], indices))
++                                   for m in self.metric])
++        # beta_1 = exponential decay of 1st moment
++        # beta_2 = exponential decay of 2nd moment
++        adam_opt : tf.keras.optimizer.Adam = \
++            tf.keras.optimizer.Adam(learning_rate=0.5, beta_1=0.9,
++                                    beta_2=0.999, name='Adam', **kwargs)
++
++
++        if global_param.p_optimize_noise:
++            hyper_parameter = [default_noise] + hyper_parameter
++
++            if isinstance(self.metric, list):
++                opt_func = opt_optimize_noise_kfold
++            else:
++                opt_func = opt_optimize_noise
++        else:
++            if isinstance(self.metric, list):
++                opt_func = opt_kfold
++            else:
++                opt_func = opt
++
++        pre_fit_metric: tf.Tensor = opt_func()
++
++        if global_param.p_check_hyper_parameters:
++            bounds = self._gp.kernel.get_hyper_parameter_bounds(xrange, n)
++            with tf.GradientTape() as g:
++                for h in hyper_parameter:
++                    g.watch(h)
++
++                if indices is not None:
++                    g.watch(indices)
++                    gradients = g.gradient(opt_func(), hyper_parameter + [indices])
++                else:
++                    gradients = g.gradient(opt_func(), hyper_parameter)
++
++            def gradient_bounding(idx):
++                if hyper_parameter[idx] < bounds[idx][0]:
++                    g_base = tf.abs((bounds[idx][0] / hyper_parameter[idx]))
++                    return tf.cast(-g_base, dtype=global_param.p_dtype)
++                elif hyper_parameter[idx] > bounds[idx][1]:
++                    g_base = tf.abs((hyper_parameter[idx] / bounds[idx][1]))
++                    return tf.cast(g_base, dtype=global_param.p_dtype)
++
++                return gradients[idx]
++
++            gradients = list(map(gradient_bounding, list(range(len(bounds)))))
++
++            if indices is not None:
++                grads_and_vars = [(g, h) for g, h in zip(gradients[:-1], hyper_parameter)]
++                grads_and_vars += [(gradients[-1:][0], indices)]
++            else:
++                grads_and_vars = [(g, h) for g, h in zip(gradients, hyper_parameter)]
++
++            adam_opt.apply_gradients(grads_and_vars)
++
++        else:
++            if indices is not None:
++                adam_opt.minimize(opt_func, hyper_parameter + [indices])
++            else:
++                adam_opt.minimize(opt_func, hyper_parameter)
++
++        if global_param.p_optimize_noise:
++            kernel.set_last_hyper_parameter(hyper_parameter[1:])
++            kernel.set_noise(tf.abs(hyper_parameter[:1][0]))
++        else:
++            kernel.set_last_hyper_parameter(hyper_parameter)
++            kernel.set_noise(global_param.p_cov_matrix_jitter)
++
++        post_fit_metric: tf.Tensor = opt_func()
++        import pdb
++        pdb.set_trace()
++        return pre_fit_metric, post_fit_metric, self._gp.covariance_matrix.kernel.get_last_hyper_parameter(), \
++               self._gp.covariance_matrix.kernel.get_noise(), indices
++
++
++
++
++
++
+ class VariationalSgdFitter(Fitter):
+     def __init__(
+             self, data_input: Union[AbstractDataInput, List[AbstractDataInput]],
+diff --git a/main/gpbasics/global_parameters.py b/main/gpbasics/global_parameters.py
+index be43d2a..e7cfb41 100644
+--- a/main/gpbasics/global_parameters.py
++++ b/main/gpbasics/global_parameters.py
+@@ -43,7 +43,7 @@ def init(tf_parallel: int, worker: bool = False):
+     p_dtype = tf.float64
+     p_cp_operator_type = ChangePointOperatorType.INDICATOR
+     p_cov_matrix_jitter = tf.constant(1e-8, dtype=p_dtype)
+-    p_optimize_noise = False
++    p_optimize_noise = True
+     # SKC ideal: p_cov_matrix_jitter = tf.constant(1e-1, dtype=p_dtype)
+     p_nystroem_ratio = 0.1
+     p_check_hyper_parameters = False
