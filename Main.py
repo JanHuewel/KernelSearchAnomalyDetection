@@ -182,6 +182,7 @@ def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segmen
 
     elif method == "MSE":
         # build matrix with Mean Square Error
+        # the MSE is computed between posterior predictions of data and actual target data in the segments
         results_matrix = np.zeros((len(datasets), len(datasets)))
         for i in range(len(datasets)):
             cov_matrix_i = cov.HolisticCovarianceMatrix(list_of_kernels[i])
@@ -207,6 +208,9 @@ def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segmen
                     results_matrix[i, j] = results_matrix[j, i] = (error_i + error_j)
 
     elif method == "KLD":
+        # build matrix based on Kullback Leibler Divergence
+        # for each pair of segments, determine the divergence between multivariate normal distributions with zero mean
+        # and covariance equal to that induced by the kernels.
         # only applicable of total length of dataset is dividable by segment_length
         def kld(sigma0: tf.Tensor, sigma1: tf.Tensor):
             L0 = tf.linalg.cholesky(sigma0)
@@ -244,11 +248,12 @@ def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segmen
                     # ----
 
     elif method == "sampling":
+        # build matrix based on posterior samples of the GPs
+        # Given two segments, draw samples from their respective GPs over a comparatively large sample interval and
+        # determine the difference between the samples
         results_matrix = np.zeros((len(datasets), len(datasets)))
         for i in range(len(datasets)):
-            cov_matrix_i = cov.HolisticCovarianceMatrix(list_of_kernels[i])
             for j in range(i + 1):
-                cov_matrix_j = cov.HolisticCovarianceMatrix(list_of_kernels[j])
                 gp_i = GaussianProcess(list_of_kernels[i], bmf.ZeroMeanFunction(1))
                 gp_j = GaussianProcess(list_of_kernels[j], bmf.ZeroMeanFunction(1))
                 data_for_gp = di.DataInput(datasets[i].join(datasets[j]).data_x_train, datasets[i].join(datasets[j]).data_y_train,
@@ -264,11 +269,12 @@ def get_clusters(dataset_name, datasets, list_of_kernels, list_of_noises, segmen
                     results_matrix[i, j] = results_matrix[j, i] = sum(tf.math.reduce_max(abs(prediction_i - prediction_j), axis=0)) / number_of_samples
 
     elif method == "sampling2":
+        # build matrix based on prior samples of the GPs
+        # Given two segments, draw prior samples from their respective GPs over a comparatively large sample interval and
+        # determine the difference between the samples
         results_matrix = np.zeros((len(datasets), len(datasets)))
         for i in range(len(datasets)):
-            cov_matrix_i = cov.HolisticCovarianceMatrix(list_of_kernels[i])
             for j in range(i + 1):
-                cov_matrix_j = cov.HolisticCovarianceMatrix(list_of_kernels[j])
                 gp_i = GaussianProcess(list_of_kernels[i], bmf.ZeroMeanFunction(1))
                 gp_j = GaussianProcess(list_of_kernels[j], bmf.ZeroMeanFunction(1))
                 data_for_gp = di.DataInput(datasets[i].join(datasets[j]).data_x_train, datasets[i].join(datasets[j]).data_y_train,
@@ -449,8 +455,6 @@ def main():
         for dataset, segment_length in kernel_search_combinations:
             datasets, list_of_kernels, list_of_noises = kernel_search(dataset, int(segment_length))
             total_combinations = [[dataset, segment_length, datasets, list_of_kernels, list_of_noises, config] for config in configs]
-            #for comb in total_combinations:
-            #    run_cluster_search_and_store(comb)
             with Pool(len(total_combinations)) as p:
                 p.map(run_cluster_search_and_store, total_combinations)
 
