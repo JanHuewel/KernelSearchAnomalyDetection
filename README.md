@@ -8,7 +8,10 @@ Our labels for the files were as follows:
 |---------|-------|------|
 | 4       | 5400  | 5700 |
 | 8       | 5550  | 5600 |
-|         |       |      |
+| 9       | 4800  | 4900 |
+| 22      | 6500  | 6700 |
+| 24      | 4450  | 4600 |
+| 25      | 5500  | 5700 |
 
 
 Since our experiments, the GT labels have been published with the dataset at [the website of Wu and Keogh](https://wu.renjie.im/research/anomaly-benchmarks-are-flawed/).
